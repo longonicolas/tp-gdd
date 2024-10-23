@@ -1,4 +1,4 @@
-/* para eliminar todas las tabglas y vovler a empezar
+ /*--para eliminar todas las tabglas y vovler a empezar
 -- PASO 1: Eliminar todas las Foreign Keys del esquema LA_NARANJA_MECANICA_V2
 DECLARE @sql NVARCHAR(MAX) = N'';
 
@@ -26,6 +26,7 @@ EXEC sp_executesql @sql;
 DROP SCHEMA LA_NARANJA_MECANICA_V2;
 
 */
+
 
 ---------------------CREAMOS ESQUEMA-------------------------
 
@@ -255,88 +256,93 @@ CREATE TABLE LA_NARANJA_MECANICA_V2.producto (
 ---------------------MIGRACION-------------------------
 
 -- Migrar cliente
-INSERT INTO LA_NARANJA_MECANICA_V2.cliente (nombre, apellido,fecha_nacimiento, mail, dni)
-SELECT  CLIENTE_NOMBRE, CLIENTE_APELLIDO, CLIENTE_FECHA_NAC,CLIENTE_MAIL,CLIENTE_DNI
-FROM gd_esquema.Maestra;
+INSERT INTO LA_NARANJA_MECANICA_V2.cliente (nombre, apellido, fecha_nacimiento, mail, dni)
+SELECT CLIENTE_NOMBRE, CLIENTE_APELLIDO, CLIENTE_FECHA_NAC, CLIENTE_MAIL, CLIENTE_DNI
+FROM gd_esquema.Maestra
+WHERE CLIENTE_NOMBRE IS NOT NULL; -- Aseguramos que sean registros de clientes
 
 -- Migrar vendedor
 INSERT INTO LA_NARANJA_MECANICA_V2.vendedor (razon_social, cuit, mail)
 SELECT VENDEDOR_RAZON_SOCIAL, VENDEDOR_CUIT, VENDEDOR_MAIL
-FROM gd_esquema.Maestra;
+FROM gd_esquema.Maestra
+WHERE VENDEDOR_RAZON_SOCIAL IS NOT NULL; -- Aseguramos que sean registros de vendedores
 
--- Migrar usuario
-INSERT INTO LA_NARANJA_MECANICA_V2.usuario(usuario,password, fecha_creacion)
-SELECT CLI_USUARIO_NOMBRE,CLI_USUARIO_PASS,CLI_USUARIO_FECHA_CREACION
-FROM gd_esquema.Maestra;
+-- Migrar usuario (para clientes)
+INSERT INTO LA_NARANJA_MECANICA_V2.usuario (usuario, password, fecha_creacion, id_cliente)
+SELECT CLI_USUARIO_NOMBRE, CLI_USUARIO_PASS, CLI_USUARIO_FECHA_CREACION, C.id_cliente
+FROM gd_esquema.Maestra M
+JOIN LA_NARANJA_MECANICA_V2.cliente C ON M.CLIENTE_DNI = C.dni
+WHERE CLI_USUARIO_NOMBRE IS NOT NULL;
 
--- Verificar los IDs generados en la tabla cliente
-SELECT * FROM LA_NARANJA_MECANICA_V2.cliente;
 
--- Verificar los IDs generados en la tabla vendedor
-SELECT * FROM LA_NARANJA_MECANICA_V2.vendedor;
+-- Migrar usuario (para vendedores)
+INSERT INTO LA_NARANJA_MECANICA_V2.usuario (usuario, password, fecha_creacion, id_vendedor)
+SELECT VEN_USUARIO_NOMBRE, VEN_USUARIO_PASS, VEN_USUARIO_FECHA_CREACION, V.id_vendedor
+FROM gd_esquema.Maestra M
+JOIN LA_NARANJA_MECANICA_V2.vendedor V ON M.VENDEDOR_CUIT = V.cuit
+WHERE VEN_USUARIO_NOMBRE IS NOT NULL;
 
--- Verificar la relación de IDs en la tabla usuario
-SELECT * FROM LA_NARANJA_MECANICA_V2.usuario;
-
-SELECT VEN_USUARIO_NOMBRE, VENDEDOR_RAZON_SOCIAL
-FROM gd_esquema.Maestra;
-
--- Migrar provincias
+-- Migrar provincias (clientes, vendedores y almacenes)
 INSERT INTO LA_NARANJA_MECANICA_V2.provincia (nombre)
-SELECT DISTINCT CLI_USUARIO_DOMICILIO_PROVINCIA
+SELECT DISTINCT VEN_USUARIO_DOMICILIO_PROVINCIA 
 FROM gd_esquema.Maestra
-
-
+WHERE VEN_USUARIO_DOMICILIO_PROVINCIA IS NOT NULL
 UNION
-
-SELECT DISTINCT VEN_USUARIO_DOMICILIO_PROVINCIA
-FROM gd_esquema.Maestra;
-
-SELECT VEN_USUARIO_DOMICILIO_PROVINCIA, CLI_USUARIO_DOMICILIO_PROVINCIA
-FROM gd_esquema.Maestra;
-
--- Migrar localidades
-INSERT INTO LA_NARANJA_MECANICA_V2.localidad (nombre, id_provincia)
-SELECT DISTINCT CLIENTE_LOCALIDAD,
-    (SELECT id_provincia FROM LA_NARANJA_MECANICA_V2.provincia WHERE nombre = CLIENTE_PROVINCIA)
+SELECT DISTINCT CLI_USUARIO_DOMICILIO_PROVINCIA 
 FROM gd_esquema.Maestra
-WHERE CLIENTE_LOCALIDAD IS NOT NULL;
+WHERE CLI_USUARIO_DOMICILIO_PROVINCIA IS NOT NULL
+UNION
+SELECT DISTINCT ALMACEN_PROVINCIA
+FROM gd_esquema.Maestra
+WHERE ALMACEN_PROVINCIA IS NOT NULL;
 
--- Migrar almacenes
+-- Migrar localidades (clientes, vendedores y almacenes)
+INSERT INTO LA_NARANJA_MECANICA_V2.localidad (id_provincia, nombre)
+SELECT DISTINCT P.id_provincia, M.VEN_USUARIO_DOMICILIO_LOCALIDAD
+FROM gd_esquema.Maestra M
+JOIN LA_NARANJA_MECANICA_V2.provincia P ON M.VEN_USUARIO_DOMICILIO_PROVINCIA = P.nombre
+WHERE M.VEN_USUARIO_DOMICILIO_LOCALIDAD IS NOT NULL
+UNION
+SELECT DISTINCT P.id_provincia, M.CLI_USUARIO_DOMICILIO_LOCALIDAD
+FROM gd_esquema.Maestra M
+JOIN LA_NARANJA_MECANICA_V2.provincia P ON M.CLI_USUARIO_DOMICILIO_PROVINCIA = P.nombre
+WHERE M.CLI_USUARIO_DOMICILIO_LOCALIDAD IS NOT NULL
+UNION
+SELECT DISTINCT P.id_provincia, M.ALMACEN_Localidad
+FROM gd_esquema.Maestra M
+JOIN LA_NARANJA_MECANICA_V2.provincia P ON M.ALMACEN_PROVINCIA = P.nombre
+WHERE M.ALMACEN_Localidad IS NOT NULL;
+
+-- Migrar datos de almacenes
 INSERT INTO LA_NARANJA_MECANICA_V2.almacen (codigo_almacen, costo_al_dia)
-SELECT ALMACEN_CODIGO, ALMACEN_COSTO_DIA_AL
-FROM gd_esquema.Maestra;
+SELECT ALMACEN_CODIGO, ALMACEN_COSTO_DIA_AL 
+FROM gd_esquema.Maestra
+WHERE ALMACEN_CODIGO IS NOT NULL;
 
--- Migrar domicilios
-INSERT INTO LA_NARANJA_MECANICA_V2.domicilio (id_usuario, codigo_almacen, id_localidad, calle, nro_calle, piso, depto, codigo_postal)
-SELECT 
-    (SELECT id_usuario FROM LA_NARANJA_MECANICA_V2.usuario WHERE usuario = CLI_USUARIO_NOMBRE),
-    ALMACEN_CODIGO,
-    (SELECT id_localidad FROM LA_NARANJA_MECANICA_V2.localidad WHERE nombre = CLIENTE_LOCALIDAD),
-    CLI_USUARIO_DOMICILIO_CALLE,
-    CLI_USUARIO_DOMICILIO_NRO_CALLE,
-    CLI_USUARIO_DOMICILIO_PISO,
-    CLI_USUARIO_DOMICILIO_DEPTO,
-    CLI_USUARIO_DOMICILIO_CP
-FROM gd_esquema.Maestra;
-
--- Migrar publicaciones
-INSERT INTO LA_NARANJA_MECANICA_V2.publicacion (descripcion, fecha_inicio, fecha_fin, id_producto, stock, precio, id_usuario, id_almacen, costo, porcentaje_por_venta)
-SELECT 
-    PUBLICACION_DESCRIPCION,
-    PUBLICACION_FECHA_INICIO,
-    PUBLICACION_FECHA_FIN,
-    PUBLICACION_ID_PRODUCTO,
-    PUBLICACION_STOCK,
-    PUBLICACION_PRECIO,
-    (SELECT id_usuario FROM LA_NARANJA_MECANICA_V2.usuario WHERE usuario = CLI_USUARIO_NOMBRE),
-    ALMACEN_CODIGO,
-    PUBLICACION_COSTO,
-    PUBLICACION_PORCENTAJE
-FROM gd_esquema.Maestra;
+-- Migrar datos de domicilios para vendedores
+INSERT INTO LA_NARANJA_MECANICA_V2.domicilio (id_usuario, id_localidad, calle, nro_calle, piso, depto, codigo_postal)
+SELECT U.id_usuario, L.id_localidad, M.VEN_USUARIO_DOMICILIO_CALLE, M.VEN_USUARIO_DOMICILIO_NRO_CALLE, 
+       M.VEN_USUARIO_DOMICILIO_PISO, M.VEN_USUARIO_DOMICILIO_DEPTO, M.VEN_USUARIO_DOMICILIO_CP
+FROM gd_esquema.Maestra M
+JOIN LA_NARANJA_MECANICA_V2.usuario U ON U.id_vendedor = (
+    SELECT V.id_vendedor 
+    FROM LA_NARANJA_MECANICA_V2.vendedor V 
+    WHERE V.mail = M.VENDEDOR_MAIL -- Usamos el email o algún campo único para obtener el ID del vendedor
+)
+JOIN LA_NARANJA_MECANICA_V2.localidad L ON M.VEN_USUARIO_DOMICILIO_LOCALIDAD = L.nombre
+WHERE M.VEN_USUARIO_DOMICILIO_CALLE IS NOT NULL;
 
 
-
-
-
+-- Migrar datos de domicilios para clientes
+INSERT INTO LA_NARANJA_MECANICA_V2.domicilio (id_usuario, id_localidad, calle, nro_calle, piso, depto, codigo_postal)
+SELECT U.id_usuario, L.id_localidad, M.CLI_USUARIO_DOMICILIO_CALLE, M.CLI_USUARIO_DOMICILIO_NRO_CALLE, 
+       M.CLI_USUARIO_DOMICILIO_PISO, M.CLI_USUARIO_DOMICILIO_DEPTO, M.CLI_USUARIO_DOMICILIO_CP
+FROM gd_esquema.Maestra M
+JOIN LA_NARANJA_MECANICA_V2.usuario U ON U.id_cliente = (
+    SELECT C.id_cliente 
+    FROM LA_NARANJA_MECANICA_V2.cliente C 
+    WHERE C.dni = M.CLIENTE_DNI -- Usamos el DNI para obtener el ID del cliente
+)
+JOIN LA_NARANJA_MECANICA_V2.localidad L ON M.CLI_USUARIO_DOMICILIO_LOCALIDAD = L.nombre
+WHERE M.CLI_USUARIO_DOMICILIO_CALLE IS NOT NULL;
 
