@@ -2,7 +2,7 @@
 -- PASO 1: Eliminar todas las Foreign Keys del esquema LA_NARANJA_MECANICA_V2
 DECLARE @sql NVARCHAR(MAX) = N'';
 
--- Elimina todas las claves foráneas en el esquema
+-- Elimina todas las claves forÃ¡neas en el esquema
 SELECT @sql += N'ALTER TABLE [' + OBJECT_SCHEMA_NAME(parent_object_id) + '].[' + OBJECT_NAME(parent_object_id) + '] DROP CONSTRAINT [' + name + '];' + CHAR(13)
 FROM sys.foreign_keys
 WHERE schema_id = SCHEMA_ID('LA_NARANJA_MECANICA_V2');
@@ -22,7 +22,7 @@ WHERE TABLE_SCHEMA = 'LA_NARANJA_MECANICA_V2';
 EXEC sp_executesql @sql;
 
 -- PASO 3: Eliminar el esquema LA_NARANJA_MECANICA_V2 (opcional)
--- Si deseas eliminar el esquema completo, usa esta línea.
+-- Si deseas eliminar el esquema completo, usa esta lÃ­nea.
 DROP SCHEMA LA_NARANJA_MECANICA_V2;
 
 */
@@ -34,71 +34,67 @@ CREATE SCHEMA LA_NARANJA_MECANICA_V2;
 GO
 
 -- Tabla: cliente
-CREATE TABLE LA_NARANJA_MECANICA_V2.cliente (
-    id_cliente BIGINT IDENTITY PRIMARY KEY,
-    nombre NVARCHAR(50),
-    apellido NVARCHAR(50),
-    fecha_nacimiento DATE,
-	mail NVARCHAR(50),
-	dni DECIMAL(18,0)
-);
+CREATE TABLE LA_NARANJA_MECANICA_V2.cliente(
+	id INTEGER IDENTITY(1,1) PRIMARY KEY,
+	nombre VARCHAR(255),
+	apellido VARCHAR(255),
+	fecha_nacimiento DATE,
+	mail VARCHAR(150),
+	dni VARCHAR(50)
+)
 
--- Tabla: vendedor
-CREATE TABLE LA_NARANJA_MECANICA_V2.vendedor (
-    id_vendedor BIGINT IDENTITY PRIMARY KEY,
-    razon_social nvarchar(50),
-    cuit VARCHAR(12),
-    mail NVARCHAR(50)
-);
+CREATE TABLE LA_NARANJA_MECANICA_V2.vendedor(
+	id INTEGER IDENTITY(1,1) PRIMARY KEY,
+	razon_social VARCHAR(255),
+	cuit VARCHAR(12),
+	mail VARCHAR(150),
+)
 
--- Tabla: usuario
-CREATE TABLE LA_NARANJA_MECANICA_V2.usuario (
-    id_usuario BIGINT IDENTITY PRIMARY KEY,
-    usuario NVARCHAR(50),
-    password NVARCHAR(50),
-    fecha_creacion DATE,
-    id_vendedor BIGINT,
-    id_cliente BIGINT,
-    FOREIGN KEY (id_vendedor) REFERENCES LA_NARANJA_MECANICA_V2.vendedor(id_vendedor),
-    FOREIGN KEY (id_cliente) REFERENCES LA_NARANJA_MECANICA_V2.cliente(id_cliente)
-);
+
+CREATE TABLE LA_NARANJA_MECANICA_V2.usuario(
+	id INTEGER IDENTITY(1,1) PRIMARY KEY,
+	usuario VARCHAR(255),
+	password VARCHAR(255),
+	fecha_creacion DATE,
+	id_vendedor INTEGER,
+	id_cliente INTEGER,
+	FOREIGN KEY (id_vendedor) REFERENCES LA_NARANJA_MECANICA_V2.vendedor(id),
+	FOREIGN KEY (id_cliente) REFERENCES LA_NARANJA_MECANICA_V2.cliente(id)
+)
+
 
 -- Tabla: provincia
-CREATE TABLE LA_NARANJA_MECANICA_V2.provincia (
-    id_provincia BIGINT PRIMARY KEY,
-    nombre NVARCHAR(50)
-);
+CREATE TABLE LA_NARANJA_MECANICA_V2.provincia(
+	id INTEGER IDENTITY(1,1) PRIMARY KEY,
+	nombre VARCHAR(255)
+)
 
--- Tabla: localidad
-CREATE TABLE LA_NARANJA_MECANICA_V2.localidad (
-    id_localidad BIGINT PRIMARY KEY,
-    id_provincia BIGINT,
-    nombre NVARCHAR(50),
-    FOREIGN KEY (id_provincia) REFERENCES LA_NARANJA_MECANICA_V2.provincia(id_provincia)
-);
+CREATE TABLE LA_NARANJA_MECANICA_V2.localidad(
+	id INTEGER IDENTITY(1,1) PRIMARY KEY,
+	id_provincia INTEGER,
+	nombre VARCHAR(255),
+	FOREIGN KEY (id_provincia) REFERENCES LA_NARANJA_MECANICA_V2.provincia(id)
+)
 
--- Tabla: almacen
-CREATE TABLE LA_NARANJA_MECANICA_V2.almacen (
-    codigo_almacen BIGINT PRIMARY KEY,
-    costo_al_dia FLOAT
-);
+CREATE TABLE LA_NARANJA_MECANICA_V2.domicilio(
+	id INTEGER IDENTITY(1,1) PRIMARY KEY,
+	id_localidad INTEGER,
+	id_usuario INTEGER,
+	calle VARCHAR(255),
+	nro_calle SMALLINT,
+	piso SMALLINT,
+	depto VARCHAR(3),
+	codigo_postal VARCHAR(4),
+	FOREIGN KEY (id_localidad) REFERENCES LA_NARANJA_MECANICA_V2.localidad(id),
+	FOREIGN KEY (id_usuario) REFERENCES LA_NARANJA_MECANICA_V2.usuario(id)
+)
 
--- Tabla: domicilio
-CREATE TABLE LA_NARANJA_MECANICA_V2.domicilio (
-    id_domicilio BIGINT PRIMARY KEY,
-    id_usuario BIGINT,
-    codigo_almacen BIGINT,
-    id_localidad BIGINT,
-    calle NVARCHAR(50),
-    nro_calle SMALLINT,
-    piso NVARCHAR(3),
-    depto NVARCHAR(2),
-    codigo_postal NVARCHAR(4),
-    FOREIGN KEY (id_usuario) REFERENCES LA_NARANJA_MECANICA_V2.usuario(id_usuario),
-    FOREIGN KEY (codigo_almacen) REFERENCES LA_NARANJA_MECANICA_V2.almacen(codigo_almacen),
-    FOREIGN KEY (id_localidad) REFERENCES LA_NARANJA_MECANICA_V2.localidad(id_localidad)
-);
-
+CREATE TABLE LA_NARANJA_MECANICA_V2.almacen(
+	codigo_almacen INTEGER PRIMARY KEY,
+	costo_al_dia DECIMAL(10,2),
+	id_domicilio INTEGER
+	FOREIGN KEY (id_domicilio) REFERENCES LA_NARANJA_MECANICA_V2.domicilio(id)
+)
 -- Tabla: publicacion
 CREATE TABLE LA_NARANJA_MECANICA_V2.publicacion (
     codigo_publicacion BIGINT PRIMARY KEY,
@@ -253,96 +249,168 @@ CREATE TABLE LA_NARANJA_MECANICA_V2.producto (
 	FOREIGN KEY (id_subrubro) REFERENCES LA_NARANJA_MECANICA_V2.subrubro(id_subrubro)
 );
 
+CREATE FUNCTION LA_NARANJA_MECANICA_V2.devolver_id_cliente(@nombre VARCHAR(255), @apellido VARCHAR(255), @dni VARCHAR(50))
+RETURNS INTEGER
+AS 
+BEGIN
+    DECLARE @id INTEGER;
+
+    SET @id = -1;
+
+    SELECT @id = id 
+    FROM LA_NARANJA_MECANICA_V2.cliente 
+    WHERE nombre = @nombre 
+      AND apellido = @apellido 
+      AND dni = @dni;
+
+    RETURN @id;
+END;
+
+CREATE FUNCTION LA_NARANJA_MECANICA_V2.devolver_id_vendedor(@cuit VARCHAR(12), @razonSocial VARCHAR(255))
+RETURNS INTEGER
+AS
+BEGIN
+	DECLARE @id INTEGER
+
+	SELECT @id = id
+	FROM LA_NARANJA_MECANICA_V2.vendedor
+	WHERE cuit = @cuit AND razon_social = @razonSocial
+
+	RETURN @id
+END
+
+CREATE FUNCTION LA_NARANJA_MECANICA_V2.devolver_id_usuario_cliente(@username VARCHAR(255), @password VARCHAR(255), @fecha_creacion DATE)
+RETURNS INTEGER
+AS
+BEGIN
+	DECLARE @id INTEGER
+
+	SELECT @id = id
+	FROM LA_NARANJA_MECANICA_V2.usuario
+	WHERE usuario = @username AND password = @password AND fecha_creacion = @fecha_creacion
+
+	RETURN @id
+END
+
+CREATE FUNCTION  LA_NARANJA_MECANICA_V2.devolver_id_localidad(@nombre VARCHAR(255), @provincia VARCHAR(255))
+RETURNS INTEGER
+AS
+BEGIN
+	DECLARE @id INTEGER
+
+	SELECT @id = l.id
+	FROM LA_NARANJA_MECANICA_V2.localidad l
+	JOIN LA_NARANJA_MECANICA_V2.provincia p ON l.id_provincia = p.id
+	WHERE l.nombre = @nombre AND p.nombre = @provincia
+
+	RETURN @id
+END
+
+CREATE FUNCTION LA_NARANJA_MECANICA_V2.get_id_domicilio(@calle VARCHAR(255), @altura SMALLINT, @localidad VARCHAR(255), @provincia VARCHAR(255))
+RETURNS INTEGER
+AS
+BEGIN
+	DECLARE @id INTEGER
+
+	SELECT @id = id
+	FROM LA_NARANJA_MECANICA_V2.domicilio
+	WHERE calle = @calle AND nro_calle = @altura AND id_localidad = LA_NARANJA_MECANICA_V2.devolver_id_localidad(@localidad, @provincia)
+
+	RETURN @id
+END
+
+CREATE FUNCTION LA_NARANJA_MECANICA_V2.devolver_id_usuario_vendedor(@username VARCHAR(255), @password VARCHAR(255), @fecha_creacion DATE)
+RETURNS INTEGER
+AS
+BEGIN
+	DECLARE @id INTEGER
+
+	SELECT @id = id
+	FROM LA_NARANJA_MECANICA_V2.usuario
+	WHERE usuario = @username AND password = @password AND fecha_creacion = @fecha_creacion
+
+	RETURN @id
+END
+
+
 ---------------------MIGRACION-------------------------
 
--- Migrar cliente
-INSERT INTO LA_NARANJA_MECANICA_V2.cliente (nombre, apellido, fecha_nacimiento, mail, dni)
-SELECT CLIENTE_NOMBRE, CLIENTE_APELLIDO, CLIENTE_FECHA_NAC, CLIENTE_MAIL, CLIENTE_DNI
-FROM gd_esquema.Maestra
-WHERE CLIENTE_NOMBRE IS NOT NULL; -- Aseguramos que sean registros de clientes
+-- Crear provincias
 
--- Migrar vendedor
-INSERT INTO LA_NARANJA_MECANICA_V2.vendedor (razon_social, cuit, mail)
-SELECT VENDEDOR_RAZON_SOCIAL, VENDEDOR_CUIT, VENDEDOR_MAIL
-FROM gd_esquema.Maestra
-WHERE VENDEDOR_RAZON_SOCIAL IS NOT NULL; -- Aseguramos que sean registros de vendedores
-
--- Migrar usuario (para clientes)
-INSERT INTO LA_NARANJA_MECANICA_V2.usuario (usuario, password, fecha_creacion, id_cliente)
-SELECT CLI_USUARIO_NOMBRE, CLI_USUARIO_PASS, CLI_USUARIO_FECHA_CREACION, C.id_cliente
-FROM gd_esquema.Maestra M
-JOIN LA_NARANJA_MECANICA_V2.cliente C ON M.CLIENTE_DNI = C.dni
-WHERE CLI_USUARIO_NOMBRE IS NOT NULL;
-
-
--- Migrar usuario (para vendedores)
-INSERT INTO LA_NARANJA_MECANICA_V2.usuario (usuario, password, fecha_creacion, id_vendedor)
-SELECT VEN_USUARIO_NOMBRE, VEN_USUARIO_PASS, VEN_USUARIO_FECHA_CREACION, V.id_vendedor
-FROM gd_esquema.Maestra M
-JOIN LA_NARANJA_MECANICA_V2.vendedor V ON M.VENDEDOR_CUIT = V.cuit
-WHERE VEN_USUARIO_NOMBRE IS NOT NULL;
-
--- Migrar provincias (clientes, vendedores y almacenes)
 INSERT INTO LA_NARANJA_MECANICA_V2.provincia (nombre)
-SELECT DISTINCT VEN_USUARIO_DOMICILIO_PROVINCIA 
-FROM gd_esquema.Maestra
-WHERE VEN_USUARIO_DOMICILIO_PROVINCIA IS NOT NULL
-UNION
-SELECT DISTINCT CLI_USUARIO_DOMICILIO_PROVINCIA 
-FROM gd_esquema.Maestra
+SELECT DISTINCT CLI_USUARIO_DOMICILIO_PROVINCIA FROM gd_esquema.Maestra
 WHERE CLI_USUARIO_DOMICILIO_PROVINCIA IS NOT NULL
-UNION
-SELECT DISTINCT ALMACEN_PROVINCIA
-FROM gd_esquema.Maestra
-WHERE ALMACEN_PROVINCIA IS NOT NULL;
 
--- Migrar localidades (clientes, vendedores y almacenes)
+INSERT INTO LA_NARANJA_MECANICA_V2.provincia
+SELECT ALMACEN_PROVINCIA from gd_esquema.Maestra
+WHERE ALMACEN_PROVINCIA NOT IN (SELECT nombre from LA_NARANJA_MECANICA_V2.provincia) AND ALMACEN_PROVINCIA IS NOT NULL
+
+-- Crear Localidades
+
+INSERT INTO LA_NARANJA_MECANICA_V2.localidad (id_provincia, nombre) 
+SELECT DISTINCT p.id, CLI_USUARIO_DOMICILIO_LOCALIDAD FROM gd_esquema.Maestra
+JOIN LA_NARANJA_MECANICA_V2.provincia p ON p.nombre = CLI_USUARIO_DOMICILIO_PROVINCIA
+WHERE CLI_USUARIO_DOMICILIO_PROVINCIA IS NOT NULL
+
 INSERT INTO LA_NARANJA_MECANICA_V2.localidad (id_provincia, nombre)
-SELECT DISTINCT P.id_provincia, M.VEN_USUARIO_DOMICILIO_LOCALIDAD
-FROM gd_esquema.Maestra M
-JOIN LA_NARANJA_MECANICA_V2.provincia P ON M.VEN_USUARIO_DOMICILIO_PROVINCIA = P.nombre
-WHERE M.VEN_USUARIO_DOMICILIO_LOCALIDAD IS NOT NULL
-UNION
-SELECT DISTINCT P.id_provincia, M.CLI_USUARIO_DOMICILIO_LOCALIDAD
-FROM gd_esquema.Maestra M
-JOIN LA_NARANJA_MECANICA_V2.provincia P ON M.CLI_USUARIO_DOMICILIO_PROVINCIA = P.nombre
-WHERE M.CLI_USUARIO_DOMICILIO_LOCALIDAD IS NOT NULL
-UNION
-SELECT DISTINCT P.id_provincia, M.ALMACEN_Localidad
-FROM gd_esquema.Maestra M
-JOIN LA_NARANJA_MECANICA_V2.provincia P ON M.ALMACEN_PROVINCIA = P.nombre
-WHERE M.ALMACEN_Localidad IS NOT NULL;
-
--- Migrar datos de almacenes
-INSERT INTO LA_NARANJA_MECANICA_V2.almacen (codigo_almacen, costo_al_dia)
-SELECT ALMACEN_CODIGO, ALMACEN_COSTO_DIA_AL 
+SELECT DISTINCT p.id, VEN_USUARIO_DOMICILIO_LOCALIDAD
 FROM gd_esquema.Maestra
-WHERE ALMACEN_CODIGO IS NOT NULL;
-
--- Migrar datos de domicilios para vendedores
-INSERT INTO LA_NARANJA_MECANICA_V2.domicilio (id_usuario, id_localidad, calle, nro_calle, piso, depto, codigo_postal)
-SELECT U.id_usuario, L.id_localidad, M.VEN_USUARIO_DOMICILIO_CALLE, M.VEN_USUARIO_DOMICILIO_NRO_CALLE, 
-       M.VEN_USUARIO_DOMICILIO_PISO, M.VEN_USUARIO_DOMICILIO_DEPTO, M.VEN_USUARIO_DOMICILIO_CP
-FROM gd_esquema.Maestra M
-JOIN LA_NARANJA_MECANICA_V2.usuario U ON U.id_vendedor = (
-    SELECT V.id_vendedor 
-    FROM LA_NARANJA_MECANICA_V2.vendedor V 
-    WHERE V.mail = M.VENDEDOR_MAIL -- Usamos el email o algún campo único para obtener el ID del vendedor
-)
-JOIN LA_NARANJA_MECANICA_V2.localidad L ON M.VEN_USUARIO_DOMICILIO_LOCALIDAD = L.nombre
-WHERE M.VEN_USUARIO_DOMICILIO_CALLE IS NOT NULL;
+JOIN LA_NARANJA_MECANICA_V2.provincia p ON p.nombre = VEN_USUARIO_DOMICILIO_PROVINCIA
+WHERE NOT EXISTS (
+				  SELECT * from LA_NARANJA_MECANICA_V2.localidad l
+				  JOIN LA_NARANJA_MECANICA_V2.provincia p ON p.id = l.id_provincia 
+				  WHERE l.nombre = VEN_USUARIO_DOMICILIO_LOCALIDAD AND p.nombre = VEN_USUARIO_DOMICILIO_PROVINCIA)
+				  AND VEN_USUARIO_DOMICILIO_CALLE IS NOT NULL
 
 
--- Migrar datos de domicilios para clientes
-INSERT INTO LA_NARANJA_MECANICA_V2.domicilio (id_usuario, id_localidad, calle, nro_calle, piso, depto, codigo_postal)
-SELECT U.id_usuario, L.id_localidad, M.CLI_USUARIO_DOMICILIO_CALLE, M.CLI_USUARIO_DOMICILIO_NRO_CALLE, 
-       M.CLI_USUARIO_DOMICILIO_PISO, M.CLI_USUARIO_DOMICILIO_DEPTO, M.CLI_USUARIO_DOMICILIO_CP
-FROM gd_esquema.Maestra M
-JOIN LA_NARANJA_MECANICA_V2.usuario U ON U.id_cliente = (
-    SELECT C.id_cliente 
-    FROM LA_NARANJA_MECANICA_V2.cliente C 
-    WHERE C.dni = M.CLIENTE_DNI -- Usamos el DNI para obtener el ID del cliente
-)
-JOIN LA_NARANJA_MECANICA_V2.localidad L ON M.CLI_USUARIO_DOMICILIO_LOCALIDAD = L.nombre
-WHERE M.CLI_USUARIO_DOMICILIO_CALLE IS NOT NULL;
+INSERT INTO LA_NARANJA_MECANICA_V2.localidad (id_provincia,nombre)
+SELECT DISTINCT p.id, ALMACEN_Localidad from gd_esquema.Maestra
+JOIN LA_NARANJA_MECANICA_V2.provincia p ON p.nombre = ALMACEN_PROVINCIA
+WHERE NOT EXISTS (SELECT * from LA_NARANJA_MECANICA_V2.localidad l
+				  JOIN LA_NARANJA_MECANICA_V2.provincia p ON p.id = l.id_provincia 
+				  WHERE l.nombre = ALMACEN_Localidad AND p.nombre = ALMACEN_PROVINCIA) AND ALMACEN_CALLE IS NOT NULL
+
+-- Insertar Clientes y Vendedores
+
+INSERT INTO LA_NARANJA_MECANICA_V2.cliente (nombre, apellido, mail, dni, fecha_nacimiento)
+SELECT DISTINCT CLIENTE_NOMBRE, CLIENTE_APELLIDO, CLIENTE_MAIL, CLIENTE_DNI, CLIENTE_FECHA_NAC FROM gd_esquema.Maestra
+WHERE CLIENTE_NOMBRE IS NOT NULL
+
+INSERT INTO LA_NARANJA_MECANICA_V2.vendedor (razon_social, cuit, mail)
+SELECT DISTINCT VENDEDOR_RAZON_SOCIAL, VENDEDOR_CUIT, VENDEDOR_MAIL FROM gd_esquema.Maestra
+WHERE VENDEDOR_RAZON_SOCIAL IS NOT NULL
+
+-- Insertar Usuarios
+
+INSERT INTO LA_NARANJA_MECANICA_V2.usuario (usuario, password, fecha_creacion, id_cliente)
+SELECT DISTINCT CLI_USUARIO_NOMBRE, CLI_USUARIO_PASS, CLI_USUARIO_FECHA_CREACION, LA_NARANJA_MECANICA_V2.devolver_id_cliente(CLIENTE_NOMBRE, CLIENTE_APELLIDO, CLIENTE_DNI) FROM gd_esquema.Maestra
+WHERE CLIENTE_NOMBRE IS NOT NULL
+
+INSERT INTO LA_NARANJA_MECANICA_V2.usuario (usuario, password, fecha_creacion, id_vendedor)
+SELECT DISTINCT VEN_USUARIO_NOMBRE, VEN_USUARIO_PASS, VEN_USUARIO_FECHA_CREACION ,LA_NARANJA_MECANICA_V2.devolver_id_vendedor(VENDEDOR_CUIT, VENDEDOR_RAZON_SOCIAL) FROM gd_esquema.Maestra
+WHERE VENDEDOR_RAZON_SOCIAL IS NOT NULL
+
+-- Direcciones de usuarios y almacenes
+
+INSERT INTO LA_NARANJA_MECANICA_V2.domicilio (id_localidad, calle, nro_calle, piso, depto, codigo_postal, id_usuario)
+SELECT DISTINCT LA_NARANJA_MECANICA_V2.devolver_id_localidad(CLI_USUARIO_DOMICILIO_LOCALIDAD, CLI_USUARIO_DOMICILIO_PROVINCIA) ,CLI_USUARIO_DOMICILIO_CALLE, CLI_USUARIO_DOMICILIO_NRO_CALLE, CLI_USUARIO_DOMICILIO_PISO, CLI_USUARIO_DOMICILIO_DEPTO ,CLI_USUARIO_DOMICILIO_CP ,LA_NARANJA_MECANICA_V2.devolver_id_usuario_cliente(CLI_USUARIO_NOMBRE, CLI_USUARIO_PASS, CLI_USUARIO_FECHA_CREACION) 
+FROM gd_esquema.Maestra
+WHERE CLI_USUARIO_NOMBRE IS NOT NULL
+
+INSERT INTO LA_NARANJA_MECANICA_V2.domicilio(id_localidad, calle, nro_calle, piso, depto, codigo_postal, id_usuario)
+SELECT DISTINCT LA_NARANJA_MECANICA_V2.devolver_id_localidad(VEN_USUARIO_DOMICILIO_LOCALIDAD, VEN_USUARIO_DOMICILIO_PROVINCIA), VEN_USUARIO_DOMICILIO_CALLE, VEN_USUARIO_DOMICILIO_NRO_CALLE, VEN_USUARIO_DOMICILIO_PISO, VEN_USUARIO_DOMICILIO_DEPTO, VEN_USUARIO_DOMICILIO_CP,  LA_NARANJA_MECANICA_V2.devolver_id_usuario_vendedor(VEN_USUARIO_NOMBRE, VEN_USUARIO_PASS, VEN_USUARIO_FECHA_CREACION)
+FROM gd_esquema.Maestra
+WHERE VEN_USUARIO_NOMBRE IS NOT NULL
+
+INSERT INTO LA_NARANJA_MECANICA_V2.domicilio (id_localidad, calle, nro_calle)
+SELECT DISTINCT LA_NARANJA_MECANICA_V2.devolver_id_localidad(ALMACEN_Localidad, ALMACEN_PROVINCIA), ALMACEN_CALLE, ALMACEN_NRO_CALLE
+FROM gd_esquema.Maestra
+WHERE ALMACEN_CALLE IS NOT NULL
+
+-- Crear Almacenes
+
+INSERT INTO LA_NARANJA_MECANICA_V2.almacen (codigo_almacen, costo_al_dia, id_domicilio)
+SELECT DISTINCT ALMACEN_CODIGO, ALMACEN_COSTO_DIA_AL ,LA_NARANJA_MECANICA_V2.get_id_domicilio(ALMACEN_CALLE, ALMACEN_NRO_CALLE, ALMACEN_Localidad, ALMACEN_PROVINCIA)
+FROM gd_esquema.Maestra
+WHERE ALMACEN_CODIGO IS NOT NULL
 
