@@ -211,43 +211,80 @@ CREATE TABLE LA_NARANJA_MECANICA_V2.pago (
     FOREIGN KEY (id_medio_pago) REFERENCES LA_NARANJA_MECANICA_V2.medio_pago(id_medio_pago)
 );
 
--- Tabla: rubro
-CREATE TABLE LA_NARANJA_MECANICA_V2.rubro (
-    id_rubro BIGINT PRIMARY KEY,
-    descripcion NVARCHAR(50)
-);
+CREATE TABLE LA_NARANJA_MECANICA_V2.marca(
+	id INTEGER IDENTITY(1,1) PRIMARY KEY,
+	nombre VARCHAR(255)
+)
 
--- Tabla: subrubro
-CREATE TABLE LA_NARANJA_MECANICA_V2.subrubro (
-    id_subrubro BIGINT PRIMARY KEY,
-    id_rubro BIGINT,
-    nombre NVARCHAR(50),
-    FOREIGN KEY (id_rubro) REFERENCES LA_NARANJA_MECANICA_V2.rubro(id_rubro)
-);
+CREATE TABLE LA_NARANJA_MECANICA_V2.rubro(
+	id INTEGER IDENTITY(1,1) PRIMARY KEY,
+	descripcion TEXT
+)
 
--- Tabla: marca
-CREATE TABLE LA_NARANJA_MECANICA_V2.marca (
-    id_marca BIGINT PRIMARY KEY,
-    nombre NVARCHAR(50)
-);
+CREATE TABLE LA_NARANJA_MECANICA_V2.subrubro(
+	id INTEGER IDENTITY(1,1) PRIMARY KEY,
+	id_rubro INTEGER,
+	nombre VARCHAR(255),
+	FOREIGN KEY (id_rubro) REFERENCES LA_NARANJA_MECANICA_V2.rubro(id)
+)
 
 -- Tabla: modelo_producto
-CREATE TABLE LA_NARANJA_MECANICA_V2.modelo_producto (
-    codigo_modelo BIGINT PRIMARY KEY,
-    descripcion NVARCHAR(50)
+CREATE TABLE LA_NARANJA_MECANICA_V2.modeloProducto (
+    codigo_modelo INTEGER PRIMARY KEY,
+    descripcion TEXT
 );
 
 -- Tabla: producto. Tabla maestra tiene producto_precio y aca no lo tenemos
-CREATE TABLE LA_NARANJA_MECANICA_V2.producto (
-    codigo_producto BIGINT PRIMARY KEY,
-    descripcion NVARCHAR(50),
-    codigo_modelo BIGINT,
-    id_marca BIGINT,
-	id_subrubro BIGINT,
-    FOREIGN KEY (codigo_modelo) REFERENCES LA_NARANJA_MECANICA_V2.modelo_producto(codigo_modelo),
-    FOREIGN KEY (id_marca) REFERENCES LA_NARANJA_MECANICA_V2.marca(id_marca),
-	FOREIGN KEY (id_subrubro) REFERENCES LA_NARANJA_MECANICA_V2.subrubro(id_subrubro)
-);
+CREATE TABLE LA_NARANJA_MECANICA_V2.producto(
+	id INTEGER IDENTITY(1,1) PRIMARY KEY,
+	codigo_producto VARCHAR(255),
+	descripcion TEXT,
+	codigo_modelo INTEGER,
+	id_marca INTEGER,
+	id_subrubro INTEGER,
+	FOREIGN KEY (codigo_modelo) REFERENCES LA_NARANJA_MECANICA_V2.modeloProducto(codigo_modelo),
+	FOREIGN KEY (id_marca) REFERENCES LA_NARANJA_MECANICA_V2.marca(id),
+	FOREIGN KEY (id_subrubro) REFERENCES LA_NARANJA_MECANICA_V2.subrubro(id)
+)
+
+CREATE FUNCTION LA_NARANJA_MECANICA_V2.get_id_rubro(@descripcion TEXT)
+RETURNS INTEGER
+AS
+BEGIN
+	DECLARE @id INTEGER
+
+	SELECT @id = id
+	FROM LA_NARANJA_MECANICA_V2.rubro
+	WHERE descripcion LIKE @descripcion
+
+	RETURN @id
+END
+
+CREATE FUNCTION LA_NARANJA_MECANICA_V2.get_id_subrubro(@nombre VARCHAR(255), @descripcion_rubro TEXT)
+RETURNS INTEGER
+AS
+BEGIN
+	DECLARE @id INTEGER
+
+	SELECT @id = id
+	FROM LA_NARANJA_MECANICA_V2.subrubro
+	WHERE nombre = @nombre AND id_rubro = LA_NARANJA_MECANICA_V2.get_id_rubro(@descripcion_rubro)
+
+	RETURN @id
+END
+
+CREATE FUNCTION LA_NARANJA_MECANICA_V2.get_id_marca(@marca VARCHAR(255))
+RETURNS INTEGER
+AS
+BEGIN
+	DECLARE @id INTEGER
+
+	SELECT @id = id
+	FROM LA_NARANJA_MECANICA_V2.marca
+	WHERE nombre = @marca
+
+	RETURN @id
+END
 
 CREATE FUNCTION LA_NARANJA_MECANICA_V2.devolver_id_cliente(@nombre VARCHAR(255), @apellido VARCHAR(255), @dni VARCHAR(50))
 RETURNS INTEGER
@@ -414,3 +451,29 @@ SELECT DISTINCT ALMACEN_CODIGO, ALMACEN_COSTO_DIA_AL ,LA_NARANJA_MECANICA_V2.get
 FROM gd_esquema.Maestra
 WHERE ALMACEN_CODIGO IS NOT NULL
 
+-- Crear de Marcas
+INSERT INTO LA_NARANJA_MECANICA_V2.marca (nombre)
+SELECT DISTINCT PRODUCTO_MARCA
+FROM gd_esquema.Maestra
+WHERE PRODUCTO_CODIGO IS NOT NULL
+
+-- Crear rubros
+INSERT INTO LA_NARANJA_MECANICA_V2.rubro (descripcion)
+SELECT DISTINCT PRODUCTO_RUBRO_DESCRIPCION
+FROM gd_esquema.Maestra
+WHERE PRODUCTO_RUBRO_DESCRIPCION IS NOT NULL
+
+-- Crear subrubros
+INSERT INTO LA_NARANJA_MECANICA_V2.subrubro (id_rubro, nombre)
+SELECT DISTINCT LA_NARANJA_MECANICA_V2.get_id_rubro(PRODUCTO_RUBRO_DESCRIPCION), PRODUCTO_SUB_RUBRO
+FROM gd_esquema.Maestra
+WHERE PRODUCTO_SUB_RUBRO IS NOT NULL
+
+-- Crear productos
+INSERT INTO LA_NARANJA_MECANICA_V2.producto (codigo_producto, descripcion, codigo_modelo, id_marca, id_subrubro)
+SELECT DISTINCT PRODUCTO_CODIGO, PRODUCTO_DESCRIPCION, PRODUCTO_MOD_CODIGO, m.id, sr.id
+FROM gd_esquema.Maestra
+JOIN LA_NARANJA_MECANICA_V2.marca m ON m.nombre = PRODUCTO_MARCA
+JOIN LA_NARANJA_MECANICA_V2.rubro r ON r.descripcion LIKE PRODUCTO_RUBRO_DESCRIPCION
+JOIN LA_NARANJA_MECANICA_V2.subrubro sr ON sr.nombre = PRODUCTO_SUB_RUBRO
+WHERE PRODUCTO_CODIGO IS NOT NULL
