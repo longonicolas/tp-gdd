@@ -104,11 +104,11 @@ CREATE TABLE LA_NARANJA_MECANICA_V2.publicacion (
     id_producto BIGINT,
     stock SMALLINT,
     precio DECIMAL(18, 2),
-    id_usuario BIGINT,
-    id_almacen BIGINT,
+    id_usuario INTEGER,
+    id_almacen INTEGER,
     costo DECIMAL(18, 2),
     porcentaje_por_venta DECIMAL(18, 2),
-    FOREIGN KEY (id_usuario) REFERENCES LA_NARANJA_MECANICA_V2.usuario(id_usuario),
+    FOREIGN KEY (id_usuario) REFERENCES LA_NARANJA_MECANICA_V2.usuario(id),
     FOREIGN KEY (id_almacen) REFERENCES LA_NARANJA_MECANICA_V2.almacen(codigo_almacen)
 );
 
@@ -124,11 +124,11 @@ CREATE TABLE LA_NARANJA_MECANICA_V2.detalle_venta (
 -- Tabla: venta
 CREATE TABLE LA_NARANJA_MECANICA_V2.venta (
     nro_venta BIGINT PRIMARY KEY,
-    id_usuario BIGINT,
+    id_usuario INTEGER,
     id_detalle_venta BIGINT,
     fecha DATE,
     total DECIMAL(18, 2),
-    FOREIGN KEY (id_usuario) REFERENCES LA_NARANJA_MECANICA_V2.usuario(id_usuario),
+    FOREIGN KEY (id_usuario) REFERENCES LA_NARANJA_MECANICA_V2.usuario(id),
     FOREIGN KEY (id_detalle_venta) REFERENCES LA_NARANJA_MECANICA_V2.detalle_venta(id_detalle_venta)
 );
 
@@ -142,7 +142,7 @@ CREATE TABLE LA_NARANJA_MECANICA_V2.tipo_envio (
 CREATE TABLE LA_NARANJA_MECANICA_V2.envio (
     nro_envio BIGINT PRIMARY KEY,
     nro_venta BIGINT,
-    id_domicilio BIGINT,
+    id_domicilio INTEGER,
     fecha DATE,
     hora_inicio NVARCHAR(5),--DECIMAL(18, 0) en tabla maestra
     hora_fin NVARCHAR(5),--DECIMAL(18, 0) en tabla maestra
@@ -150,7 +150,7 @@ CREATE TABLE LA_NARANJA_MECANICA_V2.envio (
     fecha_entrega DATETIME,
     id_tipo_envio BIGINT,
     FOREIGN KEY (nro_venta) REFERENCES LA_NARANJA_MECANICA_V2.venta(nro_venta),
-    FOREIGN KEY (id_domicilio) REFERENCES LA_NARANJA_MECANICA_V2.domicilio(id_domicilio),
+    FOREIGN KEY (id_domicilio) REFERENCES LA_NARANJA_MECANICA_V2.domicilio(id),
     FOREIGN KEY (id_tipo_envio) REFERENCES LA_NARANJA_MECANICA_V2.tipo_envio(id_tipo_envio)
 );
 
@@ -175,10 +175,10 @@ CREATE TABLE LA_NARANJA_MECANICA_V2.detalle_factura (
 CREATE TABLE LA_NARANJA_MECANICA_V2.factura (
     nro_factura BIGINT PRIMARY KEY,
     fecha DATE,
-    id_usuario BIGINT,
+    id_usuario INTEGER,
     id_detalle_factura BIGINT,
     total DECIMAL(18, 2),
-    FOREIGN KEY (id_usuario) REFERENCES LA_NARANJA_MECANICA_V2.usuario(id_usuario),
+    FOREIGN KEY (id_usuario) REFERENCES LA_NARANJA_MECANICA_V2.usuario(id),
     FOREIGN KEY (id_detalle_factura) REFERENCES LA_NARANJA_MECANICA_V2.detalle_factura(id_detalle_factura)
 );
 
