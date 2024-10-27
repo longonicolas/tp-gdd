@@ -2,7 +2,7 @@
 -- PASO 1: Eliminar todas las Foreign Keys del esquema LA_NARANJA_MECANICA_V2
 DECLARE @sql NVARCHAR(MAX) = N'';
 
--- Elimina todas las claves for√°neas en el esquema
+-- Elimina todas las claves for·neas en el esquema
 SELECT @sql += N'ALTER TABLE [' + OBJECT_SCHEMA_NAME(parent_object_id) + '].[' + OBJECT_NAME(parent_object_id) + '] DROP CONSTRAINT [' + name + '];' + CHAR(13)
 FROM sys.foreign_keys
 WHERE schema_id = SCHEMA_ID('LA_NARANJA_MECANICA_V2');
@@ -22,7 +22,7 @@ WHERE TABLE_SCHEMA = 'LA_NARANJA_MECANICA_V2';
 EXEC sp_executesql @sql;
 
 -- PASO 3: Eliminar el esquema LA_NARANJA_MECANICA_V2 (opcional)
--- Si deseas eliminar el esquema completo, usa esta l√≠nea.
+-- Si deseas eliminar el esquema completo, usa esta lÌnea.
 DROP SCHEMA LA_NARANJA_MECANICA_V2;
 
 */
@@ -246,7 +246,7 @@ CREATE TABLE LA_NARANJA_MECANICA_V2.producto(
 	FOREIGN KEY (id_marca) REFERENCES LA_NARANJA_MECANICA_V2.marca(id),
 	FOREIGN KEY (id_subrubro) REFERENCES LA_NARANJA_MECANICA_V2.subrubro(id)
 )
-
+GO
 CREATE FUNCTION LA_NARANJA_MECANICA_V2.get_id_rubro(@descripcion TEXT)
 RETURNS INTEGER
 AS
@@ -259,11 +259,11 @@ BEGIN
 
 	RETURN @id
 END
-
+GO
 
 
 -- OBTENER ID DE UN SUBRUBRO
-
+GO
 CREATE OR ALTER FUNCTION LA_NARANJA_MECANICA_V2.get_id_subrubro(@subrubro VARCHAR(255), @rubro VARCHAR(255))
 RETURNS INTEGER
 AS
@@ -275,9 +275,10 @@ BEGIN
 	WHERE nombre = @subrubro AND id_rubro = LA_NARANJA_MECANICA_V2.get_id_rubro(@rubro)
 	RETURN @id
 END
-
+GO
 -- OBTENER ID DE UNA MARCA
 	
+GO
 CREATE OR ALTER FUNCTION LA_NARANJA_MECANICA_V2.get_id_marca(@marca VARCHAR(255))
 RETURNS INTEGER
 AS
@@ -290,9 +291,9 @@ BEGIN
 
 	RETURN @id
 END
-
+GO
 	-- OBTENER UN ID DE UN PRODUCTO
-
+GO
 CREATE FUNCTION LA_NARANJA_MECANICA_V2.get_id_producto(@codigo VARCHAR(255), @descripcion VARCHAR(255), @marca VARCHAR(255), @modelo INTEGER,@subrubro VARCHAR(255), @rubro VARCHAR(255))
 RETURNS INTEGER
 AS
@@ -309,7 +310,8 @@ BEGIN
 
 	RETURN @id
 END
-
+GO
+GO
 CREATE FUNCTION LA_NARANJA_MECANICA_V2.devolver_id_cliente(@nombre VARCHAR(255), @apellido VARCHAR(255), @dni VARCHAR(50))
 RETURNS INTEGER
 AS 
@@ -326,7 +328,8 @@ BEGIN
 
     RETURN @id;
 END;
-
+GO
+GO
 CREATE FUNCTION LA_NARANJA_MECANICA_V2.devolver_id_vendedor(@cuit VARCHAR(12), @razonSocial VARCHAR(255))
 RETURNS INTEGER
 AS
@@ -339,7 +342,8 @@ BEGIN
 
 	RETURN @id
 END
-
+GO
+GO
 CREATE FUNCTION LA_NARANJA_MECANICA_V2.devolver_id_usuario_cliente(@username VARCHAR(255), @password VARCHAR(255), @fecha_creacion DATE)
 RETURNS INTEGER
 AS
@@ -352,7 +356,8 @@ BEGIN
 
 	RETURN @id
 END
-
+GO
+GO
 CREATE FUNCTION  LA_NARANJA_MECANICA_V2.devolver_id_localidad(@nombre VARCHAR(255), @provincia VARCHAR(255))
 RETURNS INTEGER
 AS
@@ -366,7 +371,8 @@ BEGIN
 
 	RETURN @id
 END
-
+GO
+GO
 CREATE FUNCTION LA_NARANJA_MECANICA_V2.get_id_domicilio(@calle VARCHAR(255), @altura SMALLINT, @localidad VARCHAR(255), @provincia VARCHAR(255))
 RETURNS INTEGER
 AS
@@ -379,7 +385,8 @@ BEGIN
 
 	RETURN @id
 END
-
+GO
+GO
 CREATE FUNCTION LA_NARANJA_MECANICA_V2.devolver_id_usuario_vendedor(@username VARCHAR(255), @password VARCHAR(255), @fecha_creacion DATE)
 RETURNS INTEGER
 AS
@@ -392,7 +399,7 @@ BEGIN
 
 	RETURN @id
 END
-
+GO
 
 ---------------------MIGRACION-------------------------
 
