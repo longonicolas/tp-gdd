@@ -687,8 +687,8 @@ FROM gd_esquema.Maestra
 WHERE PRODUCTO_MOD_CODIGO IS NOT NULL
 
 -- Crear productos
-INSERT INTO LA_NARANJA_MECANICA_V2.producto (codigo_producto, descripcion, codigo_modelo, id_marca, id_subrubro)
-SELECT DISTINCT PRODUCTO_CODIGO, PRODUCTO_DESCRIPCION, PRODUCTO_MOD_CODIGO, m.id, sr.id
+INSERT INTO LA_NARANJA_MECANICA_V2.producto (codigo_producto, descripcion, codigo_modelo, id_marca, id_subrubro, precio)
+SELECT DISTINCT PRODUCTO_CODIGO, PRODUCTO_DESCRIPCION, PRODUCTO_MOD_CODIGO, m.id, sr.id, PRODUCTO_PRECIO
 FROM gd_esquema.Maestra
 JOIN LA_NARANJA_MECANICA_V2.marca m ON m.nombre = PRODUCTO_MARCA
 JOIN LA_NARANJA_MECANICA_V2.rubro r ON r.descripcion LIKE PRODUCTO_RUBRO_DESCRIPCION
