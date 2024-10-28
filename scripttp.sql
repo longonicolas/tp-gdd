@@ -1,6 +1,6 @@
 ﻿/*
 -----------------------
-/* 
+
 -- PASO 1: Eliminar todas las Foreign Keys del esquema LA_NARANJA_MECANICA_V2 
 */
 DECLARE @sql NVARCHAR(MAX) = N'';
@@ -14,10 +14,6 @@ WHERE schema_id = SCHEMA_ID('LA_NARANJA_MECANICA_V2');
 -- Ejecuta el SQL generado para eliminar las claves for�neas
 EXEC sp_executesql @sql;
 
-
-/* 
--- PASO 2: Eliminar todas las funciones del esquema LA_NARANJA_MECANICA_V2 
-*/
 SET @sql = N'';
 
 -- Genera las instrucciones para eliminar todas las funciones en el esquema
@@ -29,9 +25,6 @@ WHERE ROUTINE_SCHEMA = 'LA_NARANJA_MECANICA_V2' AND ROUTINE_TYPE = 'FUNCTION';
 EXEC sp_executesql @sql;
 
 
-/* 
--- PASO 3: Eliminar todas las tablas del esquema LA_NARANJA_MECANICA_V2 
-*/
 SET @sql = N'';
 
 -- Genera las instrucciones para eliminar todas las tablas en el esquema
@@ -49,13 +42,16 @@ EXEC sp_executesql @sql;
 */
 -- Si deseas eliminar el esquema completo, usa esta l�nea.
 DROP SCHEMA LA_NARANJA_MECANICA_V2;
-´*/
 
 
 ---------------------CREAMOS ESQUEMA-------------------------
+USE GD2C2024
+GO
 
 CREATE SCHEMA LA_NARANJA_MECANICA_V2;
 GO
+
+
 
 -- Tabla: cliente
 CREATE TABLE LA_NARANJA_MECANICA_V2.cliente(
@@ -198,13 +194,13 @@ CREATE TABLE LA_NARANJA_MECANICA_V2.venta (
 
 -- Tabla: tipo_envio
 CREATE TABLE LA_NARANJA_MECANICA_V2.tipo_envio (
-    id_tipo_envio decimal(18,0) PRIMARY KEY,
+    id_tipo_envio decimal(18,0) IDENTITY(1,1) PRIMARY KEY,
     nombre NVARCHAR(50)
 );
 
 -- Tabla: envio
 CREATE TABLE LA_NARANJA_MECANICA_V2.envio (
-    nro_envio decimal(18,0) PRIMARY KEY,
+    nro_envio decimal(18,0) IDENTITY(1,1) PRIMARY KEY,
     nro_venta decimal(18,0),
     id_domicilio decimal(18,0),
     fecha DATE,
@@ -404,7 +400,7 @@ BEGIN
 END
 GO
 GO
-CREATE FUNCTION LA_NARANJA_MECANICA_V2.get_id_domicilio(@calle NVARCHAR(50), @altura decimal(18,0), @localidad NVARCHAR(50), @provincia NVARCHAR(50))
+CREATE OR ALTER FUNCTION LA_NARANJA_MECANICA_V2.get_id_domicilio(@calle NVARCHAR(50), @altura decimal(18,0), @localidad NVARCHAR(50), @provincia NVARCHAR(50))
 RETURNS decimal(18,0)
 AS
 BEGIN
@@ -432,6 +428,7 @@ BEGIN
 END
 GO
 
+GO
 CREATE OR ALTER FUNCTION LA_NARANJA_MECANICA_V2.get_id_tipo_medio_pago(@nombre NVARCHAR(50))
 RETURNS decimal(18,0)
 AS
@@ -446,6 +443,7 @@ BEGIN
 END
 GO
 
+GO
 CREATE OR ALTER FUNCTION LA_NARANJA_MECANICA_V2.get_id_medio_pago(@nro_tarjeta NVARCHAR(50), @fecha_vencimiento DATE, @nombre_medio_pago NVARCHAR(50))
 RETURNS decimal(18,0)
 AS
@@ -550,6 +548,39 @@ BEGIN
 	RETURN @id
 END
 GO
+
+GO
+CREATE OR ALTER FUNCTION LA_NARANJA_MECANICA_V2.get_id_tipo_envio(@nombre NVARCHAR(50))
+RETURNS DECIMAL(18,0)
+AS
+BEGIN
+	DECLARE @id decimal(18,0)
+
+	SELECT @id = id_tipo_envio
+	FROM LA_NARANJA_MECANICA_V2.tipo_envio
+	WHERE nombre = @nombre
+
+	RETURN @id
+END
+GO
+
+GO
+CREATE OR ALTER FUNCTION LA_NARANJA_MECANICA_V2.get_id_domicilio_cliente(@calle NVARCHAR(50), @altura decimal(18,0), @piso DECIMAL(18,0) , @depto NVARCHAR(50) , @localidad NVARCHAR(50), @provincia NVARCHAR(50))
+RETURNS DECIMAL(18,0)
+AS
+BEGIN
+	DECLARE @id decimal(18,0)
+
+	SELECT @id = id
+	FROM LA_NARANJA_MECANICA_V2.domicilio
+	WHERE calle = @calle AND nro_calle = @altura AND id_localidad = LA_NARANJA_MECANICA_V2.devolver_id_localidad(@localidad, @provincia) AND piso = @piso AND depto = @depto
+
+	RETURN @id
+
+
+END
+GO
+
 ---------------------MIGRACION-------------------------
 
 -- Crear provincias
@@ -769,3 +800,21 @@ SELECT DISTINCT
 	FACTURA_DET_SUBTOTAL
 FROM gd_esquema.Maestra
 WHERE FACTURA_DET_TIPO is not null
+
+-- Crear tipo de envio
+INSERT INTO LA_NARANJA_MECANICA_V2.tipo_envio (nombre)
+SELECT DISTINCT ENVIO_TIPO FROM gd_esquema.Maestra
+WHERE ENVIO_TIPO IS NOT NULL
+
+-- Crear envio
+INSERT INTO LA_NARANJA_MECANICA_V2.envio (nro_venta, id_tipo_envio, id_domicilio, fecha, hora_inicio, hora_fin, costo, fecha_entrega)
+SELECT DISTINCT VENTA_CODIGO, 
+				LA_NARANJA_MECANICA_V2.get_id_tipo_envio(ENVIO_TIPO),
+				LA_NARANJA_MECANICA_V2.get_id_domicilio_cliente(CLI_USUARIO_DOMICILIO_CALLE, CLI_USUARIO_DOMICILIO_NRO_CALLE, CLI_USUARIO_DOMICILIO_PISO, CLI_USUARIO_DOMICILIO_DEPTO, CLI_USUARIO_DOMICILIO_LOCALIDAD, CLI_USUARIO_DOMICILIO_PROVINCIA) 
+				,ENVIO_FECHA_PROGAMADA, 
+				ENVIO_HORA_INICIO, 
+				ENVIO_HORA_FIN_INICIO, 
+				ENVIO_COSTO, 
+				ENVIO_FECHA_ENTREGA
+FROM gd_esquema.Maestra
+WHERE VENTA_CODIGO IS NOT NULL
