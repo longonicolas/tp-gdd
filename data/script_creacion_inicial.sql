@@ -89,6 +89,7 @@ CREATE TABLE LA_NARANJA_MECANICA_V2.provincia(
 	nombre NVARCHAR(50)
 )
 
+-- Tabla: localidad
 CREATE TABLE LA_NARANJA_MECANICA_V2.localidad(
 	id decimal(18,0) IDENTITY(1,1) PRIMARY KEY,
 	id_provincia decimal(18,0),
@@ -96,6 +97,7 @@ CREATE TABLE LA_NARANJA_MECANICA_V2.localidad(
 	FOREIGN KEY (id_provincia) REFERENCES LA_NARANJA_MECANICA_V2.provincia(id)
 )
 
+-- Tabla: domicilio
 CREATE TABLE LA_NARANJA_MECANICA_V2.domicilio(
 	id decimal(18,0) IDENTITY(1,1) PRIMARY KEY,
 	id_localidad decimal(18,0),
@@ -109,6 +111,7 @@ CREATE TABLE LA_NARANJA_MECANICA_V2.domicilio(
 	FOREIGN KEY (id_usuario) REFERENCES LA_NARANJA_MECANICA_V2.usuario(id)
 )
 
+-- Tabla: almacen
 CREATE TABLE LA_NARANJA_MECANICA_V2.almacen(
 	codigo_almacen decimal(18,0) PRIMARY KEY,
 	costo_al_dia DECIMAL(18,2),
@@ -116,16 +119,19 @@ CREATE TABLE LA_NARANJA_MECANICA_V2.almacen(
 	FOREIGN KEY (id_domicilio) REFERENCES LA_NARANJA_MECANICA_V2.domicilio(id)
 )
 
+-- Tabla: marca
 CREATE TABLE LA_NARANJA_MECANICA_V2.marca(
 	id decimal(18,0) IDENTITY(1,1) PRIMARY KEY,
 	nombre NVARCHAR(50)
 )
 
+-- Tabla: rubro
 CREATE TABLE LA_NARANJA_MECANICA_V2.rubro(
 	id decimal(18,0) IDENTITY(1,1) PRIMARY KEY,
 	descripcion NVARCHAR(50)
 )
 
+-- Tabla: subrubro
 CREATE TABLE LA_NARANJA_MECANICA_V2.subrubro(
 	id decimal(18,0) IDENTITY(1,1) PRIMARY KEY,
 	id_rubro decimal(18,0),
@@ -139,7 +145,7 @@ CREATE TABLE LA_NARANJA_MECANICA_V2.modeloProducto (
     descripcion NVARCHAR(50)
 );
 
--- Tabla: producto. Tabla maestra tiene producto_precio y aca no lo tenemos
+-- Tabla: producto
 CREATE TABLE LA_NARANJA_MECANICA_V2.producto(
 	id decimal(18,0) IDENTITY(1,1) PRIMARY KEY,
 	codigo_producto NVARCHAR(50),
@@ -183,7 +189,7 @@ CREATE TABLE LA_NARANJA_MECANICA_V2.detalle_venta (
 
 -- Tabla: venta
 CREATE TABLE LA_NARANJA_MECANICA_V2.venta (
-    nro_venta decimal(18,0) PRIMARY KEY, --VENTA_CODIGO DE LA TABLA MAESTRA
+    nro_venta decimal(18,0) PRIMARY KEY, 
     id_usuario decimal(18,0),
     id_detalle_venta decimal(18,0),
     fecha DATE,
@@ -222,7 +228,7 @@ CREATE TABLE LA_NARANJA_MECANICA_V2.concepto (
 
 -- Tabla: factura
 CREATE TABLE LA_NARANJA_MECANICA_V2.factura (
-    nro_factura decimal(18,0) PRIMARY KEY, --FACTURA_NUMERO en tabla maestra
+    nro_factura decimal(18,0) PRIMARY KEY, 
     fecha DATE,
     id_usuario decimal(18,0),
     total DECIMAL(18, 2),
@@ -259,8 +265,6 @@ CREATE TABLE LA_NARANJA_MECANICA_V2.medio_pago (
     FOREIGN KEY (id_tipo_medio_pago) REFERENCES LA_NARANJA_MECANICA_V2.tipo_medio_pago(id_tipo_medio_pago)
 );
 
---en la tabla maestra existe PAGO_MEDIO_PAGO que no lo usamos en ningun lado
-
 -- Tabla: pago
 CREATE TABLE LA_NARANJA_MECANICA_V2.pago (
     nro_pago decimal(18,0) IDENTITY(1,1) PRIMARY KEY,
@@ -268,10 +272,13 @@ CREATE TABLE LA_NARANJA_MECANICA_V2.pago (
     id_medio_pago decimal(18,0),
     importe DECIMAL(18, 2),
     fecha DATE,
-    cuotas decimal(18,0),--DECIMAL(18, 0) en tabla maestra
+    cuotas decimal(18,0),
     FOREIGN KEY (nro_venta) REFERENCES LA_NARANJA_MECANICA_V2.venta(nro_venta),
     FOREIGN KEY (id_medio_pago) REFERENCES LA_NARANJA_MECANICA_V2.medio_pago(id_medio_pago)
 );
+select PRODUCTO_CODIGO,PRODUCTO_DESCRIPCION,PRODUCTO_MARCA,PRODUCTO_PRECIO,PRODUCTO_SUB_RUBRO FROM gd_esquema.Maestra
+
+--------------------------FUNCIONES-----------------------------------
 
 GO
 CREATE OR ALTER FUNCTION LA_NARANJA_MECANICA_V2.get_id_rubro(@descripcion NVARCHAR(50))
