@@ -41,7 +41,7 @@ WHERE TABLE_SCHEMA = 'LA_NARANJA_MECANICA_V2';
 -- Ejecuta el SQL generado para eliminar las tablas
 EXEC sp_executesql @sql;
 
-DROP FUNCTION LA_NARANJA_MECANICA_V2.devolver_id_localidad
+--DROP FUNCTION LA_NARANJA_MECANICA_V2.devolver_id_localidad
 
 /*
 -- PASO 4: Eliminar el esquema LA_NARANJA_MECANICA_V2 
@@ -175,7 +175,7 @@ CREATE TABLE LA_NARANJA_MECANICA_V2.publicacion (
 
 -- Tabla: detalle_venta
 CREATE TABLE LA_NARANJA_MECANICA_V2.detalle_venta (
-    id_detalle_venta decimal(18,0) PRIMARY KEY,
+    id_detalle_venta decimal(18,0) IDENTITY(1,1) PRIMARY KEY,
     id_publicacion decimal(18,0),
     cantidad decimal(18,0),
 	precio decimal(18,2),-- en la tabla maestra esta como DECIMAL(18, 0) y tambien esta el precio que no lo pusimos aca
@@ -247,13 +247,13 @@ CREATE TABLE LA_NARANJA_MECANICA_V2.factura (
 
 -- Tabla: tipo_medio_pago
 CREATE TABLE LA_NARANJA_MECANICA_V2.tipo_medio_pago (
-    id_tipo_medio_pago decimal(18,0) PRIMARY KEY,
+    id_tipo_medio_pago decimal(18,0) IDENTITY(1,1) PRIMARY KEY,
     nombre NVARCHAR(50)
-);
+)
 
 -- Tabla: medio_pago
 CREATE TABLE LA_NARANJA_MECANICA_V2.medio_pago (
-    id_medio_pago decimal(18,0) PRIMARY KEY,
+    id_medio_pago decimal(18,0) IDENTITY(1,1) PRIMARY KEY,
     nro_tarjeta NVARCHAR(50),
     fecha_vencimiento DATE,
     id_tipo_medio_pago decimal(18,0),
@@ -430,6 +430,63 @@ BEGIN
 END
 GO
 
+CREATE OR ALTER FUNCTION LA_NARANJA_MECANICA_V2.get_id_tipo_medio_pago(@nombre NVARCHAR(50))
+RETURNS decimal(18,0)
+AS
+BEGIN
+	DECLARE @id decimal(18,0)
+
+	SELECT @id = id_tipo_medio_pago
+	FROM LA_NARANJA_MECANICA_V2.tipo_medio_pago
+	WHERE nombre = @nombre
+
+	RETURN @id
+END
+GO
+
+CREATE OR ALTER FUNCTION LA_NARANJA_MECANICA_V2.get_id_medio_pago(@nro_tarjeta NVARCHAR(50), @fecha_vencimiento DATE, @nombre_medio_pago NVARCHAR(50))
+RETURNS decimal(18,0)
+AS
+BEGIN
+	DECLARE @id decimal(18,0)
+
+	SELECT @id = id_medio_pago
+	FROM LA_NARANJA_MECANICA_V2.medio_pago
+	WHERE nombre_medio_pago = @nombre_medio_pago and nro_tarjeta = @nro_tarjeta and fecha_vencimiento = @fecha_vencimiento
+
+	RETURN @id
+END
+GO
+
+GO
+CREATE OR ALTER FUNCTION LA_NARANJA_MECANICA_V2.get_id_publicacion(@publicacion_codigo decimal(18,0))
+RETURNS decimal(18,0)
+AS
+BEGIN
+	DECLARE @id decimal(18,0)
+
+	SELECT @id = codigo_publicacion
+	FROM LA_NARANJA_MECANICA_V2.publicacion
+	WHERE codigo_publicacion = @publicacion_codigo
+
+	RETURN @id
+END
+GO
+
+GO
+CREATE OR ALTER FUNCTION LA_NARANJA_MECANICA_V2.get_id_detalle_venta(@cantidad decimal(18,0), @precio decimal(18,2), @subtotal decimal(18,2))
+RETURNS decimal(18,0)
+AS
+BEGIN
+	DECLARE @id decimal(18,0)
+
+	SELECT @id = id_detalle_venta
+	FROM LA_NARANJA_MECANICA_V2.detalle_venta
+	WHERE cantidad = @cantidad and precio = @precio and subtotal = @subtotal
+
+	RETURN @id
+END
+GO
 ---------------------MIGRACION-------------------------
 
 -- Crear provincias
@@ -545,10 +602,68 @@ JOIN LA_NARANJA_MECANICA_V2.subrubro sr ON sr.nombre = PRODUCTO_SUB_RUBRO
 WHERE PRODUCTO_CODIGO IS NOT NULL
 
 -- Crear Publicaciones
-INSERT INTO LA_NARANJA_MECANICA_V2.publicacion (codigo_publicacion, descripcion, stock, fecha_inicio, fecha_vencimiento, precio, costo, porcentaje_por_venta, id_usuario, id_producto, codigo_almacen)
-SELECT DISTINCT PUBLICACION_CODIGO, PUBLICACION_DESCRIPCION, PUBLICACION_STOCK, PUBLICACION_FECHA, PUBLICACION_FECHA_V, PUBLICACION_PRECIO, 
-				PUBLICACION_COSTO, PUBLICACION_PORC_VENTA, LA_NARANJA_MECANICA_V2.devolver_id_usuario_vendedor(VEN_USUARIO_NOMBRE, VEN_USUARIO_PASS, VEN_USUARIO_FECHA_CREACION), 
-				LA_NARANJA_MECANICA_V2.get_id_producto(PRODUCTO_CODIGO, PRODUCTO_DESCRIPCION, PRODUCTO_MARCA, PRODUCTO_MOD_CODIGO, PRODUCTO_SUB_RUBRO, PRODUCTO_RUBRO_DESCRIPCION), ALMACEN_CODIGO
+INSERT INTO LA_NARANJA_MECANICA_V2.publicacion (
+    codigo_publicacion, descripcion, stock, fecha_inicio, fecha_fin, precio, costo, 
+    porcentaje_por_venta, id_usuario, id_producto, id_almacen
+)
+SELECT DISTINCT 
+    PUBLICACION_CODIGO, 
+    PUBLICACION_DESCRIPCION, 
+    PUBLICACION_STOCK, 
+    PUBLICACION_FECHA, 
+    PUBLICACION_FECHA_V, 
+    PUBLICACION_PRECIO, 
+    PUBLICACION_COSTO, 
+    PUBLICACION_PORC_VENTA, 
+    LA_NARANJA_MECANICA_V2.devolver_id_usuario_vendedor(VEN_USUARIO_NOMBRE, VEN_USUARIO_PASS, VEN_USUARIO_FECHA_CREACION),
+    LA_NARANJA_MECANICA_V2.get_id_producto(
+        PRODUCTO_CODIGO, PRODUCTO_DESCRIPCION, PRODUCTO_MARCA, 
+        PRODUCTO_MOD_CODIGO, PRODUCTO_SUB_RUBRO, PRODUCTO_RUBRO_DESCRIPCION
+    ), 
+    ALMACEN_CODIGO
 FROM gd_esquema.Maestra
-WHERE VEN_USUARIO_NOMBRE IS NOT NULL AND PUBLICACION_CODIGO IS NOT NULL
+WHERE PUBLICACION_CODIGO IS NOT NULL and VENDEDOR_RAZON_SOCIAL is not null;
 
+--Crear DETALLE VENTAS
+INSERT INTO LA_NARANJA_MECANICA_V2.detalle_venta(
+	id_publicacion,
+	cantidad,
+	precio,
+	subtotal
+)
+SELECT DISTINCT
+	LA_NARANJA_MECANICA_V2.get_id_publicacion(PUBLICACION_CODIGO),
+	VENTA_DET_CANT,
+	VENTA_DET_PRECIO,
+	VENTA_DET_SUB_TOTAL
+FROM gd_esquema.Maestra
+WHERE PUBLICACION_CODIGO is not NULL and VENTA_DET_PRECIO is not NULL
+
+--CREAR VENTAS
+INSERT INTO LA_NARANJA_MECANICA_V2.venta(
+     nro_venta,
+    id_usuario,
+    id_detalle_venta,
+    fecha,
+    total
+    )
+SELECT DISTINCT 
+    VENTA_CODIGO, 
+    LA_NARANJA_MECANICA_V2.devolver_id_usuario_cliente(CLI_USUARIO_NOMBRE, CLI_USUARIO_PASS, CLI_USUARIO_FECHA_CREACION), 
+    LA_NARANJA_MECANICA_V2.get_id_detalle_venta(VENTA_DET_CANT, VENTA_DET_PRECIO, VENTA_DET_SUB_TOTAL), 
+    VENTA_FECHA, 
+    VENTA_TOTAL
+    FROM gd_esquema.Maestra
+WHERE VENTA_CODIGO is not null
+
+--Crear tipos medio de pago
+INSERT INTO LA_NARANJA_MECANICA_V2.tipo_medio_pago (nombre)
+SELECT DISTINCT PAGO_TIPO_MEDIO_PAGO
+FROM gd_esquema.Maestra
+WHERE PAGO_MEDIO_PAGO IS NOT NULL
+
+--Crear medio de pago
+INSERT INTO LA_NARANJA_MECANICA_V2.medio_pago (nro_tarjeta, fecha_vencimiento, id_tipo_medio_pago, nombre_medio_pago)
+SELECT DISTINCT PAGO_NRO_TARJETA, PAGO_FECHA_VENC_TARJETA, LA_NARANJA_MECANICA_V2.get_id_tipo_medio_pago(PAGO_TIPO_MEDIO_PAGO), PAGO_MEDIO_PAGO
+FROM gd_esquema.Maestra
+WHERE PAGO_MEDIO_PAGO IS NOT NULL
