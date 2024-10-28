@@ -276,7 +276,6 @@ CREATE TABLE LA_NARANJA_MECANICA_V2.pago (
     FOREIGN KEY (nro_venta) REFERENCES LA_NARANJA_MECANICA_V2.venta(nro_venta),
     FOREIGN KEY (id_medio_pago) REFERENCES LA_NARANJA_MECANICA_V2.medio_pago(id_medio_pago)
 );
-select PRODUCTO_CODIGO,PRODUCTO_DESCRIPCION,PRODUCTO_MARCA,PRODUCTO_PRECIO,PRODUCTO_SUB_RUBRO FROM gd_esquema.Maestra
 
 --------------------------FUNCIONES-----------------------------------
 
