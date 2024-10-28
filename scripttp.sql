@@ -1,16 +1,17 @@
+ï»¿/*
 -----------------------
 /* 
 -- PASO 1: Eliminar todas las Foreign Keys del esquema LA_NARANJA_MECANICA_V2 
 */
 DECLARE @sql NVARCHAR(MAX) = N'';
 
--- Genera las instrucciones para eliminar todas las claves foráneas en el esquema
+-- Genera las instrucciones para eliminar todas las claves forï¿½neas en el esquema
 SELECT @sql += 'ALTER TABLE [' + OBJECT_SCHEMA_NAME(parent_object_id) + '].[' 
                + OBJECT_NAME(parent_object_id) + '] DROP CONSTRAINT [' + name + '];' + CHAR(13)
 FROM sys.foreign_keys
 WHERE schema_id = SCHEMA_ID('LA_NARANJA_MECANICA_V2');
 
--- Ejecuta el SQL generado para eliminar las claves foráneas
+-- Ejecuta el SQL generado para eliminar las claves forï¿½neas
 EXEC sp_executesql @sql;
 
 
@@ -46,8 +47,9 @@ EXEC sp_executesql @sql;
 /*
 -- PASO 4: Eliminar el esquema LA_NARANJA_MECANICA_V2 
 */
--- Si deseas eliminar el esquema completo, usa esta línea.
+-- Si deseas eliminar el esquema completo, usa esta lï¿½nea.
 DROP SCHEMA LA_NARANJA_MECANICA_V2;
+Â´*/
 
 
 ---------------------CREAMOS ESQUEMA-------------------------
@@ -218,20 +220,8 @@ CREATE TABLE LA_NARANJA_MECANICA_V2.envio (
 
 -- Tabla: concepto
 CREATE TABLE LA_NARANJA_MECANICA_V2.concepto (
-    id_concepto decimal(18,0) PRIMARY KEY,
+    id_concepto decimal(18,0) IDENTITY(1,1) PRIMARY KEY,
     nombre NVARCHAR(50)
-);
-
--- Tabla: detalle_factura
-CREATE TABLE LA_NARANJA_MECANICA_V2.detalle_factura (
-    id_detalle_factura decimal(18,0) PRIMARY KEY,
-    codigo_publicacion decimal(18,0),
-    id_concepto decimal(18,0), --FACTURA_DET_TIPÖ
-    cantidad decimal(18,0),
-    precio_unitario DECIMAL(18, 2),
-	detalle_subtotal decimal(18,2),
-    FOREIGN KEY (codigo_publicacion) REFERENCES LA_NARANJA_MECANICA_V2.publicacion(codigo_publicacion),
-    FOREIGN KEY (id_concepto) REFERENCES LA_NARANJA_MECANICA_V2.concepto(id_concepto)
 );
 
 -- Tabla: factura
@@ -239,10 +229,22 @@ CREATE TABLE LA_NARANJA_MECANICA_V2.factura (
     nro_factura decimal(18,0) PRIMARY KEY, --FACTURA_NUMERO en tabla maestra
     fecha DATE,
     id_usuario decimal(18,0),
-    id_detalle_factura decimal(18,0),
     total DECIMAL(18, 2),
-    FOREIGN KEY (id_usuario) REFERENCES LA_NARANJA_MECANICA_V2.usuario(id),
-    FOREIGN KEY (id_detalle_factura) REFERENCES LA_NARANJA_MECANICA_V2.detalle_factura(id_detalle_factura)
+    FOREIGN KEY (id_usuario) REFERENCES LA_NARANJA_MECANICA_V2.usuario(id)
+);
+
+-- Tabla: detalle_factura
+CREATE TABLE LA_NARANJA_MECANICA_V2.detalle_factura (
+    id_detalle_factura decimal(18,0) IDENTITY(1,1) PRIMARY KEY,
+	nro_factura decimal(18,0),
+    codigo_publicacion decimal(18,0),
+    id_concepto decimal(18,0), --FACTURA_DET_TIPï¿½
+    cantidad decimal(18,0),
+    precio_unitario DECIMAL(18, 2),
+	detalle_subtotal decimal(18,2),
+    FOREIGN KEY (codigo_publicacion) REFERENCES LA_NARANJA_MECANICA_V2.publicacion(codigo_publicacion),
+    FOREIGN KEY (id_concepto) REFERENCES LA_NARANJA_MECANICA_V2.concepto(id_concepto),
+	FOREIGN KEY (nro_factura) REFERENCES LA_NARANJA_MECANICA_V2.factura(nro_factura)
 );
 
 -- Tabla: tipo_medio_pago
@@ -265,7 +267,7 @@ CREATE TABLE LA_NARANJA_MECANICA_V2.medio_pago (
 
 -- Tabla: pago
 CREATE TABLE LA_NARANJA_MECANICA_V2.pago (
-    nro_pago decimal(18,0) PRIMARY KEY,
+    nro_pago decimal(18,0) IDENTITY(1,1) PRIMARY KEY,
     nro_venta decimal(18,0),
     id_medio_pago decimal(18,0),
     importe DECIMAL(18, 2),
@@ -487,6 +489,67 @@ BEGIN
 	RETURN @id
 END
 GO
+
+GO
+CREATE OR ALTER FUNCTION LA_NARANJA_MECANICA_V2.get_id_venta(@venta_codigo decimal(18,0))
+RETURNS decimal(18,0)
+AS
+BEGIN
+	DECLARE @id decimal(18,0)
+
+	SELECT @id = nro_venta
+	FROM LA_NARANJA_MECANICA_V2.venta
+	WHERE nro_venta = @venta_codigo
+
+	RETURN @id
+END
+GO
+
+GO
+CREATE OR ALTER FUNCTION LA_NARANJA_MECANICA_V2.get_id_factura(@nro_factura decimal(18,0))
+RETURNS decimal(18,0)
+AS
+BEGIN
+	DECLARE @id decimal(18,0)
+
+	SELECT @id = nro_factura
+	FROM LA_NARANJA_MECANICA_V2.factura
+	WHERE nro_factura = @nro_factura
+
+	RETURN @id
+END
+GO
+
+GO
+CREATE OR ALTER FUNCTION LA_NARANJA_MECANICA_V2.devolver_id_usuario_vendedor_por_publicacion(@publicacion_codigo decimal(18,0))
+RETURNS decimal(18,0)
+AS
+BEGIN
+	DECLARE @id_vendedor decimal(18,0)
+	DECLARE @id_publicacion decimal(18,0)
+
+	SELECT @id_vendedor = id_usuario, @id_publicacion = codigo_publicacion
+	FROM LA_NARANJA_MECANICA_V2.publicacion
+	WHERE codigo_publicacion = @publicacion_codigo
+
+	RETURN @id_vendedor
+END
+GO
+
+GO
+CREATE OR ALTER FUNCTION LA_NARANJA_MECANICA_V2.get_id_concepto(@nombre_concepto NVARCHAR(50))
+RETURNS decimal(18,0)
+AS
+BEGIN
+	DECLARE @id decimal(18,0)
+
+	SELECT @id = id_concepto
+	FROM LA_NARANJA_MECANICA_V2.concepto
+	WHERE nombre = @nombre_concepto
+
+	RETURN @id
+END
+GO
 ---------------------MIGRACION-------------------------
 
 -- Crear provincias
@@ -667,3 +730,42 @@ INSERT INTO LA_NARANJA_MECANICA_V2.medio_pago (nro_tarjeta, fecha_vencimiento, i
 SELECT DISTINCT PAGO_NRO_TARJETA, PAGO_FECHA_VENC_TARJETA, LA_NARANJA_MECANICA_V2.get_id_tipo_medio_pago(PAGO_TIPO_MEDIO_PAGO), PAGO_MEDIO_PAGO
 FROM gd_esquema.Maestra
 WHERE PAGO_MEDIO_PAGO IS NOT NULL
+
+--Crear pago
+INSERT INTO LA_NARANJA_MECANICA_V2.pago(nro_venta, id_medio_pago, importe, fecha, cuotas)
+SELECT DISTINCT
+	LA_NARANJA_MECANICA_V2.get_id_venta(VENTA_CODIGO),
+	LA_NARANJA_MECANICA_V2.get_id_medio_pago(PAGO_NRO_TARJETA,PAGO_FECHA_VENC_TARJETA,PAGO_MEDIO_PAGO),
+	PAGO_IMPORTE,
+	PAGO_FECHA,
+	PAGO_CANT_CUOTAS
+FROM gd_esquema.Maestra
+WHERE PAGO_IMPORTE IS NOT NULL
+
+--Crear factura
+INSERT INTO LA_NARANJA_MECANICA_V2.factura(nro_factura, fecha, id_usuario, total)
+SELECT DISTINCT
+	FACTURA_NUMERO,
+	FACTURA_FECHA,
+	LA_NARANJA_MECANICA_V2.devolver_id_usuario_vendedor_por_publicacion(PUBLICACION_CODIGO),
+	FACTURA_TOTAL
+FROM gd_esquema.Maestra
+WHERE FACTURA_NUMERO is not null
+
+--Crear Conceptos
+INSERT INTO LA_NARANJA_MECANICA_V2.concepto(nombre)
+SELECT DISTINCT FACTURA_DET_TIPO
+FROM gd_esquema.Maestra
+WHERE FACTURA_DET_TIPO is not null
+
+--Crear detalle factura
+INSERT INTO LA_NARANJA_MECANICA_V2.detalle_factura(nro_factura,codigo_publicacion, id_concepto, cantidad, precio_unitario, detalle_subtotal)
+SELECT DISTINCT
+	LA_NARANJA_MECANICA_V2.get_id_factura(FACTURA_NUMERO), --HAY QUE HACER LA FUNCION
+	LA_NARANJA_MECANICA_V2.get_id_publicacion(PUBLICACION_CODIGO),
+	LA_NARANJA_MECANICA_V2.get_id_concepto(FACTURA_DET_TIPO), --HAY QUE HACER LA FUNCION
+	FACTURA_DET_CANTIDAD,
+	FACTURA_DET_PRECIO, 
+	FACTURA_DET_SUBTOTAL
+FROM gd_esquema.Maestra
+WHERE FACTURA_DET_TIPO is not null
