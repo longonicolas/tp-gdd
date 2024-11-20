@@ -5,9 +5,18 @@ CREATE TABLE LA_NARANJA_MECANICA_V2.BI_Tiempo(
 	anio decimal(18,0),
 	cuatrimestre decimal(18,0),
 	mes decimal(18,0),
-	--semana decimal(18,0),
-	dia decimal(18,0),
-	fecha date
+)
+
+	CREATE TABLE LA_NARANJA_MECANICA_V2.BI_Hecho_Venta(
+	id INTEGER IDENTITY(1,1) PRIMARY KEY,
+	cant_ventas INTEGER,
+	localidad VARCHAR(255),
+	cuatrimestre INTEGER,
+	anio_venta SMALLINT,
+	rubro VARCHAR(255),
+	rango_etario INTEGER,
+	provincia_id DECIMAL(18,0)
+	FOREIGN KEY (provincia_id) REFERENCES LA_NARANJA_MECANICA_V2.provincia(id),
 )
 
 CREATE TABLE LA_NARANJA_MECANICA_V2.BI_Ubicacion(
@@ -57,7 +66,7 @@ CREATE TABLE LA_NARANJA_MECANICA_V2.BI_Marca (
     nombre NVARCHAR(50)
 )
 
-CREATE TABLE LA_NARANJA_MECANICA_V2.BI_Producto( --Debería ser una dimensión???
+CREATE TABLE LA_NARANJA_MECANICA_V2.BI_Producto( --DeberÃ­a ser una dimensiÃ³n???
 	id_producto DECIMAL(18,0) PRIMARY KEY,
     descripcion NVARCHAR(50),
     id_subrubro DECIMAL(18,0),
@@ -66,6 +75,58 @@ CREATE TABLE LA_NARANJA_MECANICA_V2.BI_Producto( --Debería ser una dimensión???
     FOREIGN KEY (id_marca) REFERENCES LA_NARANJA_MECANICA_V2.BI_Marca(id_marca)
 )
 
+
+GO
+CREATE OR ALTER FUNCTION LA_NARANJA_MECANICA_V2.get_rango_etario(@fecha DATE)
+RETURNS decimal(18,0)
+AS
+BEGIN
+    DECLARE @edad DECIMAL(10,0)
+	DECLARE @rango DECIMAL(10,0)
+
+    SET @edad = DATEDIFF(YEAR, @fecha, GETDATE()) - 
+    CASE 
+        WHEN MONTH(@fecha) > MONTH(GETDATE()) OR 
+             (MONTH(@fecha) = MONTH(GETDATE()) AND DAY(@fecha) > DAY(GETDATE())) 
+        THEN 1 
+        ELSE 0 
+    END
+
+	SET @rango = CASE
+		WHEN @edad BETWEEN 0 AND 24 THEN 1
+		WHEN @edad BETWEEN 25 AND 35 THEN 2
+		WHEN @edad BETWEEN 36 AND 50 THEN 3
+		WHEN @edad > 50 THEN 4
+	END
+
+    RETURN @rango
+END
+GO
+
+GO
+CREATE OR ALTER FUNCTION LA_NARANJA_MECANICA_V2.get_cuatrimestre(@fecha DATE)
+RETURNS INTEGER
+AS
+BEGIN
+    DECLARE @mes INT
+    DECLARE @cuatrimestre INTEGER
+
+    -- Obtener el mes de la fecha
+    SET @mes = MONTH(@fecha)
+
+    -- Determinar el cuatrimestre
+    SET @cuatrimestre = CASE
+        WHEN @mes BETWEEN 1 AND 4 THEN 1
+        WHEN @mes BETWEEN 5 AND 8 THEN 2
+        WHEN @mes BETWEEN 9 AND 12 THEN 3
+        ELSE 0
+    END
+
+    RETURN @cuatrimestre
+END
+GO
+
+	
 ---- MIGRADO DE DATOS DEL MODELO TRANSACCIONAL -------
 
 -- Evitar duplicados en BI_Tiempo al insertar desde factura
@@ -87,7 +148,7 @@ WHERE NOT EXISTS (
     WHERE T.fecha = F.fecha
 );
 
--- Evitar duplicados en BI_Tiempo al insertar desde fecha_inicio de publicación
+-- Evitar duplicados en BI_Tiempo al insertar desde fecha_inicio de publicaciÃ³n
 INSERT INTO LA_NARANJA_MECANICA_V2.BI_Tiempo (anio, cuatrimestre, mes, dia, fecha)
 SELECT DISTINCT
     YEAR(P.fecha_inicio) AS anio,
@@ -106,7 +167,7 @@ WHERE NOT EXISTS (
     WHERE T.fecha = P.fecha_inicio
 );
 
--- Evitar duplicados en BI_Tiempo al insertar desde fecha_fin de publicación
+-- Evitar duplicados en BI_Tiempo al insertar desde fecha_fin de publicaciÃ³n
 INSERT INTO LA_NARANJA_MECANICA_V2.BI_Tiempo (anio, cuatrimestre, mes, dia, fecha)
 SELECT DISTINCT
     YEAR(P.fecha_fin) AS anio,
@@ -197,7 +258,7 @@ SELECT
     S.descripcion AS subrubro,
     T.anio,
     T.cuatrimestre,
-    AVG(DATEDIFF(DAY, T.fecha, T2.fecha)) AS promedio_tiempo_vigente_dias -- Promedio de los tiempos vigentes en días
+    AVG(DATEDIFF(DAY, T.fecha, T2.fecha)) AS promedio_tiempo_vigente_dias -- Promedio de los tiempos vigentes en dÃ­as
 FROM
     LA_NARANJA_MECANICA_V2.BI_Publicaciones P
 JOIN
@@ -210,16 +271,16 @@ JOIN
     LA_NARANJA_MECANICA_V2.BI_Tiempo T2 ON P.id_tiempo_fin = T2.id_tiempo
 GROUP BY
     S.descripcion, -- Subrubro
-    T.anio,       -- Año
+    T.anio,       -- AÃ±o
     T.cuatrimestre -- Cuatrimestre
 GO
 
--- Vista para calcular el promedio de stock inicial según la marca por año
+-- Vista para calcular el promedio de stock inicial segÃºn la marca por aÃ±o
 GO
 CREATE OR ALTER VIEW LA_NARANJA_MECANICA_V2.vw_PromedioStockInicial AS
 SELECT
     M.nombre AS marca,      -- Nombre de la marca
-    T.anio,                 -- Año
+    T.anio,                 -- AÃ±o
     AVG(P.stock) AS promedio_stock_inicial -- Promedio de stock inicial
 FROM
     LA_NARANJA_MECANICA_V2.BI_Publicaciones P
@@ -231,6 +292,38 @@ JOIN
     LA_NARANJA_MECANICA_V2.BI_Tiempo T ON P.id_tiempo_inicio = T.id_tiempo
 GROUP BY
     M.nombre, -- Marca
-    T.anio    -- Año
+    T.anio    -- AÃ±o
 GO
 
+-- Vista Rendimiento de rubros
+
+INSERT INTO LA_NARANJA_MECANICA_V2.BI_Hecho_Venta (cant_ventas, localidad, provincia_id ,cuatrimestre, anio_venta, rubro, rango_etario)
+SELECT DISTINCT COUNT(DISTINCT v.nro_venta) cant_ventas, l.nombre localidad , l.id_provincia provincia_id ,LA_NARANJA_MECANICA_V2.get_cuatrimestre(v.fecha) cuatrimestre_venta ,YEAR(v.fecha) anio_venta, rub.descripcion rubro, LA_NARANJA_MECANICA_V2.get_rango_etario(c.fecha_nacimiento) rango_etario 
+FROM LA_NARANJA_MECANICA_V2.venta v
+JOIN LA_NARANJA_MECANICA_V2.usuario u on u.id = v.id_usuario
+JOIN LA_NARANJA_MECANICA_V2.cliente c ON c.id = u.id_cliente
+JOIN LA_NARANJA_MECANICA_V2.detalle_venta dv on dv.id_detalle_venta = v.id_detalle_venta
+JOIN LA_NARANJA_MECANICA_V2.publicacion p on p.codigo_publicacion = dv.id_publicacion
+JOIN LA_NARANJA_MECANICA_V2.producto produ ON p.id_producto = produ.id
+JOIN LA_NARANJA_MECANICA_V2.subrubro sr ON sr.id = produ.id_subrubro
+JOIN LA_NARANJA_MECANICA_V2.rubro rub On rub.id = sr.id_rubro
+JOIN LA_NARANJA_MECANICA_V2.domicilio d ON d.id_usuario = u.id
+JOIN LA_NARANJA_MECANICA_V2.localidad l ON d.id_localidad = l.id
+GROUP BY rub.descripcion, LA_NARANJA_MECANICA_V2.get_rango_etario(c.fecha_nacimiento), YEAR(v.fecha), l.nombre, LA_NARANJA_MECANICA_V2.get_cuatrimestre(v.fecha), l.id_provincia
+
+	
+CREATE OR ALTER VIEW LA_NARANJA_MECANICA_V2.vista_rendimiento_rubros
+AS
+SELECT *
+FROM LA_NARANJA_MECANICA_V2.BI_Hecho_Venta hv
+WHERE hv.rubro IN
+( SELECT TOP 5 hv2.rubro
+	FROM LA_NARANJA_MECANICA_V2.BI_Hecho_Venta hv2
+	WHERE hv2.anio_venta = hv.anio_venta 
+	AND hv2.cuatrimestre = hv.cuatrimestre 
+	AND hv2.localidad = hv.localidad
+	AND hv2.provincia_id = hv.provincia_id
+	AND hv2.rango_etario = hv.rango_etario
+	ORDER BY hv2.cant_ventas DESC
+)
+GO
