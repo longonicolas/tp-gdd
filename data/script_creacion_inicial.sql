@@ -35,7 +35,7 @@ WHERE TABLE_SCHEMA = 'LA_NARANJA_MECANICA_V2';
 -- Ejecuta el SQL generado para eliminar las tablas
 EXEC sp_executesql @sql;
 
---DROP FUNCTION LA_NARANJA_MECANICA_V2.devolver_id_localidad
+DROP VIEW LA_NARANJA_MECANICA_V2.vw_PromedioTiempoPublicaciones;
 
 /*
 -- PASO 4: Eliminar el esquema LA_NARANJA_MECANICA_V2 
