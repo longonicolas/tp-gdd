@@ -214,4 +214,23 @@ GROUP BY
     T.cuatrimestre -- Cuatrimestre
 GO
 
-SELECT * FROM LA_NARANJA_MECANICA_V2.vw_PromedioTiempoPublicaciones
+-- Vista para calcular el promedio de stock inicial según la marca por año
+GO
+CREATE OR ALTER VIEW LA_NARANJA_MECANICA_V2.vw_PromedioStockInicial AS
+SELECT
+    M.nombre AS marca,      -- Nombre de la marca
+    T.anio,                 -- Año
+    AVG(P.stock) AS promedio_stock_inicial -- Promedio de stock inicial
+FROM
+    LA_NARANJA_MECANICA_V2.BI_Publicaciones P
+JOIN
+    LA_NARANJA_MECANICA_V2.BI_Producto Prod ON P.id_producto = Prod.id_producto
+JOIN
+    LA_NARANJA_MECANICA_V2.BI_Marca M ON Prod.id_marca = M.id_marca
+JOIN
+    LA_NARANJA_MECANICA_V2.BI_Tiempo T ON P.id_tiempo_inicio = T.id_tiempo
+GROUP BY
+    M.nombre, -- Marca
+    T.anio    -- Año
+GO
+
