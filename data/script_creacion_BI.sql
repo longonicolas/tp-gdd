@@ -328,6 +328,21 @@ WHERE hv.rubro IN
 )
 GO
 
+-- Vista 9
+CREATE VIEW LA_NARANJA_MECANICA_V2.bi_porcentaje_de_facturacion
+AS
+SELECT  c.nombre as 'Concepto', (SUM(df.detalle_subtotal) / totalPorMes.total_facturado) * 100 as 'Porcentaje de facturacion', MONTH(f.fecha) as 'Mes', YEAR(f.fecha) as 'Año'  
+FROM LA_NARANJA_MECANICA_V2.factura f
+JOIN LA_NARANJA_MECANICA_V2.detalle_factura df ON df.nro_factura = f.nro_factura
+JOIN LA_NARANJA_MECANICA_V2.concepto c ON c.id_concepto = df.id_concepto
+JOIN (SELECT SUM(df2.detalle_subtotal) total_facturado, MONTH(f2.fecha) mes, YEAR(f2.fecha) año FROM LA_NARANJA_MECANICA_V2.factura f2
+		JOIN LA_NARANJA_MECANICA_V2.detalle_factura df2 ON f2.nro_factura = df2.nro_factura
+		GROUP BY MONTH(f2.fecha), YEAR(f2.fecha)) 
+		totalPorMes ON MONTH(f.fecha) = totalPorMes.mes AND YEAR(f.fecha) = totalPorMes.año
+GROUP BY c.nombre , MONTH(f.fecha), YEAR(f.fecha), totalPorMes.total_facturado
+GO
+
+
 -- Vista 10
 CREATE VIEW LA_NARANJA_MECANICA_V2.bi_monto_facturado_segun_provincia
 AS
