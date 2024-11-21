@@ -327,3 +327,22 @@ WHERE hv.rubro IN
 	ORDER BY hv2.cant_ventas DESC
 )
 GO
+
+-- Vista 10
+CREATE VIEW LA_NARANJA_MECANICA_V2.bi_monto_facturado_segun_provincia
+AS
+SELECT pro.nombre as 'Provincia',  
+	   ven.razon_social as 'Vendedor', 
+	   SUM(v.total) as 'Total Facturado', 
+	   YEAR(v.fecha) as 'Año', 
+	   LA_NARANJA_MECANICA_V2.get_cuatrimestre(v.fecha) as 'Cuatrimestre' 
+	   FROM LA_NARANJA_MECANICA_V2.venta v
+JOIN LA_NARANJA_MECANICA_V2.detalle_venta dv ON dv.id_detalle_venta = v.id_detalle_venta
+JOIN LA_NARANJA_MECANICA_V2.publicacion p ON p.codigo_publicacion = dv.id_publicacion
+JOIN LA_NARANJA_MECANICA_V2.usuario u ON u.id = p.id_usuario
+JOIN LA_NARANJA_MECANICA_V2.vendedor ven ON ven.id = u.id_vendedor
+JOIN LA_NARANJA_MECANICA_V2.domicilio dom ON dom.id_usuario = v.id_usuario
+JOIN LA_NARANJA_MECANICA_V2.localidad lo ON lo.id = dom.id_localidad
+JOIN LA_NARANJA_MECANICA_V2.provincia pro ON pro.id = lo.id_provincia
+GROUP BY pro.nombre , ven.razon_social, YEAR(v.fecha), LA_NARANJA_MECANICA_V2.get_cuatrimestre(v.fecha)
+GO
