@@ -75,6 +75,48 @@ CREATE TABLE LA_NARANJA_MECANICA_V2.BI_Producto( --Debería ser una dimensión??
     FOREIGN KEY (id_marca) REFERENCES LA_NARANJA_MECANICA_V2.BI_Marca(id_marca)
 )
 
+CREATE TABLE LA_NARANJA_MECANICA_V2.bi_cliente(
+	id_cliente DECIMAL(18,0) PRIMARY KEY,
+	fecha_nacimiento DATE
+)
+
+insert into LA_NARANJA_MECANICA_V2.bi_cliente (id_cliente, fecha_nacimiento)
+select distinct id, fecha_nacimiento from LA_NARANJA_MECANICA_V2.cliente
+
+CREATE TABLE LA_NARANJA_MECANICA_V2.bi_vendedor(
+	id_vendedor DECIMAL(18,0) PRIMARY KEY,
+	razon_social VARCHAR(255)
+)
+
+insert into LA_NARANJA_MECANICA_V2.bi_vendedor (id_vendedor, razon_social)
+select distinct id, razon_social from LA_NARANJA_MECANICA_V2.vendedor
+
+
+CREATE TABLE LA_NARANJA_MECANICA_V2.bi_usuario(
+		id_usuario DECIMAL(18,0) PRIMARY KEY,
+		id_cliente DECIMAL(18,0),
+		id_vendedor DECIMAL(18,0),
+		FOREIGN KEY (id_cliente) REFERENCES LA_NARANJA_MECANICA_V2.bi_cliente(id_cliente),
+		FOREIGN KEY (id_vendedor) REFERENCES LA_NARANJA_MECANICA_V2.bi_vendedor(id_vendedor),
+)
+
+insert into LA_NARANJA_MECANICA_V2.bi_usuario (id_usuario, id_cliente, id_vendedor)
+select distinct id, id_cliente, id_vendedor from LA_NARANJA_MECANICA_V2.usuario
+
+CREATE TABLE LA_NARANJA_MECANICA_V2.bi_domicilio(
+	id INTEGER IDENTITY(1,1) PRIMARY KEY,
+	id_usuario DECIMAL(18,0),
+	id_domicilio DECIMAL(18,0),
+	localidad VARCHAR(255),
+	provincia VARCHAR(255),
+	FOREIGN KEY (id_usuario) REFERENCES LA_NARANJA_MECANICA_V2.bi_usuario(id_usuario),
+)
+
+insert into LA_NARANJA_MECANICA_V2.bi_domicilio (id_usuario, id_domicilio ,localidad, provincia)
+select distinct u.id_usuario, d.id ,lo.nombre, p.nombre from LA_NARANJA_MECANICA_V2.bi_usuario u
+join LA_NARANJA_MECANICA_V2.domicilio d on d.id_usuario = u.id_usuario
+join LA_NARANJA_MECANICA_V2.localidad lo on lo.id = d.id_localidad
+join LA_NARANJA_MECANICA_V2.provincia p on p.id = lo.id_provincia
 
 GO
 CREATE OR ALTER FUNCTION LA_NARANJA_MECANICA_V2.get_rango_etario(@fecha DATE)
@@ -329,14 +371,12 @@ WHERE hv.rubro IN
 GO
 
 -- Vista 8
-CREATE VIEW LA_NARANJA_MECANICA_V2.localidades_costo_envio
+CREATE OR ALTER VIEW LA_NARANJA_MECANICA_V2.localidades_costo_envio
 AS
-SELECT TOP 5 SUM(e.costo) as 'Costo total', p.nombre as 'Provincia', l.nombre as 'Localidad' 
+SELECT TOP 5 SUM(e.costo) as 'Costo total', d.provincia as 'Provincia', d.localidad as 'Localidad' 
 FROM LA_NARANJA_MECANICA_V2.envio e
-JOIN LA_NARANJA_MECANICA_V2.domicilio d ON d.id = e.id_domicilio
-JOIN LA_NARANJA_MECANICA_V2.localidad l ON l.id = d.id_localidad
-JOIN LA_NARANJA_MECANICA_V2.provincia p ON p.id = l.id_provincia
-GROUP BY p.nombre, l.nombre
+JOIN LA_NARANJA_MECANICA_V2.bi_domicilio d ON e.id_domicilio = d.id_domicilio
+GROUP BY d.provincia, d.localidad
 ORDER BY 'Costo total' DESC
 GO
 
