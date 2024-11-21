@@ -328,6 +328,18 @@ WHERE hv.rubro IN
 )
 GO
 
+-- Vista 8
+CREATE VIEW LA_NARANJA_MECANICA_V2.localidades_costo_envio
+AS
+SELECT TOP 5 SUM(e.costo) as 'Costo total', p.nombre as 'Provincia', l.nombre as 'Localidad' 
+FROM LA_NARANJA_MECANICA_V2.envio e
+JOIN LA_NARANJA_MECANICA_V2.domicilio d ON d.id = e.id_domicilio
+JOIN LA_NARANJA_MECANICA_V2.localidad l ON l.id = d.id_localidad
+JOIN LA_NARANJA_MECANICA_V2.provincia p ON p.id = l.id_provincia
+GROUP BY p.nombre, l.nombre
+ORDER BY 'Costo total' DESC
+GO
+
 -- Vista 9
 CREATE VIEW LA_NARANJA_MECANICA_V2.bi_porcentaje_de_facturacion
 AS
