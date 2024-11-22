@@ -103,20 +103,47 @@ CREATE TABLE LA_NARANJA_MECANICA_V2.bi_usuario(
 insert into LA_NARANJA_MECANICA_V2.bi_usuario (id_usuario, id_cliente, id_vendedor)
 select distinct id, id_cliente, id_vendedor from LA_NARANJA_MECANICA_V2.usuario
 
+
+
+
+	CREATE TABLE LA_NARANJA_MECANICA_V2.bi_provincia(
+	id DECIMAL(18,0) PRIMARY KEY,
+	nombre VARCHAR(255)
+)
+
+CREATE TABLE LA_NARANJA_MECANICA_V2.bi_localidad(
+	id DECIMAL(18,0) PRIMARY KEY,
+	nombre VARCHAR(255),
+	id_provincia DECIMAL(18,0) REFERENCES LA_NARANJA_MECANICA_V2.bi_provincia
+)
+
 CREATE TABLE LA_NARANJA_MECANICA_V2.bi_domicilio(
-	id INTEGER IDENTITY(1,1) PRIMARY KEY,
 	id_usuario DECIMAL(18,0),
-	id_domicilio DECIMAL(18,0),
-	localidad VARCHAR(255),
-	provincia VARCHAR(255),
+	id_domicilio DECIMAL(18,0)  PRIMARY KEY,
+	id_localidad DECIMAL(18,0) REFERENCES LA_NARANJA_MECANICA_V2.bi_localidad,
 	FOREIGN KEY (id_usuario) REFERENCES LA_NARANJA_MECANICA_V2.bi_usuario(id_usuario),
 )
 
-insert into LA_NARANJA_MECANICA_V2.bi_domicilio (id_usuario, id_domicilio ,localidad, provincia)
-select distinct u.id_usuario, d.id ,lo.nombre, p.nombre from LA_NARANJA_MECANICA_V2.bi_usuario u
-join LA_NARANJA_MECANICA_V2.domicilio d on d.id_usuario = u.id_usuario
-join LA_NARANJA_MECANICA_V2.localidad lo on lo.id = d.id_localidad
-join LA_NARANJA_MECANICA_V2.provincia p on p.id = lo.id_provincia
+CREATE TABLE LA_NARANJA_MECANICA_V2.bi_almacen(
+	id DECIMAL(18,0) PRIMARY KEY,
+	id_domicilio DECIMAL(18,0) REFERENCES LA_NARANJA_MECANICA_V2.bi_domicilio
+	
+)
+
+CREATE TABLE LA_NARANJA_MECANICA_V2.bi_hecho_envio(
+	nro DECIMAL(18,0) PRIMARY KEY,
+	id_tiempo DECIMAL(18,0) REFERENCES LA_NARANJA_MECANICA_V2.bi_tiempo,
+	hora_inicio VARCHAR(2),
+	hora_fin VARCHAR(2),
+	costo DECIMAL(10,2),
+	fecha_entrega DATETIME,
+	id_tipo_envio INTEGER FOREIGN KEY REFERENCES LA_NARANJA_MECANICA_V2.bi_tipo_envio,
+	id__domicilio DECIMAL(18,0) REFERENCES LA_NARANJA_MECANICA_V2.bi_domicilio,
+	id_usuario DECIMAL(18,0) REFERENCES LA_NARANJA_MECANICA_V2.bi_usuario,
+	id_almacen DECIMAL(18,0) REFERENCES LA_NARANJA_MECANICA_V2.bi_almacen, 
+)
+
+
 
 GO
 CREATE OR ALTER FUNCTION LA_NARANJA_MECANICA_V2.get_rango_etario(@fecha DATE)
@@ -280,6 +307,57 @@ CREATE TABLE LA_NARANJA_MECANICA_V2.BI_Publicaciones (
 	FOREIGN KEY (id_tiempo_fin) REFERENCES LA_NARANJA_MECANICA_V2.BI_Tiempo(id_tiempo)
 )
 
+	INSERT INTO LA_NARANJA_MECANICA_V2.bi_provincia
+SELECT * FROM LA_NARANJA_MECANICA_V2.bi_provincia
+
+INSERT INTO LA_NARANJA_MECANICA_V2.bi_localidad
+SELECT id, nombre ,id_provincia  FROM LA_NARANJA_MECANICA_V2.localidad
+
+INSERT INTO LA_NARANJA_MECANICA_V2.bi_domicilio (id_domicilio, id_usuario, id_localidad)
+SELECT id, id_usuario, id_localidad
+FROM LA_NARANJA_MECANICA_V2.domicilio
+
+INSERT INTO LA_NARANJA_MECANICA_V2.bi_almacen
+SELECT a.codigo_almacen, d.id
+FROM LA_NARANJA_MECANICA_V2.almacen a
+JOIN LA_NARANJA_MECANICA_V2.domicilio d ON d.id = a.id_domicilio
+
+GO
+CREATE FUNCTION LA_NARANJA_MECANICA_V2.devolver_id_tiempo(@fecha DATE)
+RETURNS DECIMAL(18,0)
+AS
+BEGIN
+	DECLARE @id DECIMAL(18,0),
+			@cuatri SMALLINT
+
+	SET @cuatri = LA_NARANJA_MECANICA_V2.get_cuatrimestre(@fecha)
+
+	SET @id = (SELECT id_tiempo FROM LA_NARANJA_MECANICA_V2.BI_Tiempo
+			  WHERE cuatrimestre = @cuatri AND mes = MONTH(@fecha) AND anio = YEAR (@fecha) )
+
+	RETURN @id
+
+
+END
+GO
+
+INSERT INTO LA_NARANJA_MECANICA_V2.bi_hecho_envio
+SELECT e.nro_envio, 
+	   LA_NARANJA_MECANICA_V2.devolver_id_tiempo(e.fecha),
+	   e.hora_inicio, 
+	   e.hora_fin, 
+	   e.costo, 
+	   e.fecha_entrega, 
+	   e.id_tipo_envio, 
+	   e.id_domicilio,
+	   d.id_usuario,
+	   p.id_almacen
+FROM LA_NARANJA_MECANICA_V2.envio e
+JOIN LA_NARANJA_MECANICA_V2.domicilio d ON d.id = e.id_domicilio
+JOIN LA_NARANJA_MECANICA_V2.venta v ON e.nro_venta = v.nro_venta
+JOIN LA_NARANJA_MECANICA_V2.detalle_venta dv ON dv.id_detalle_venta = v.id_detalle_venta
+JOIN LA_NARANJA_MECANICA_V2.publicacion p ON p.codigo_publicacion = dv.id_publicacion
+
 -- Insertar datos en la tabla de hechos BI_Publicaciones
 INSERT INTO LA_NARANJA_MECANICA_V2.BI_Publicaciones
 SELECT DISTINCT
@@ -369,6 +447,33 @@ WHERE hv.rubro IN
 	ORDER BY hv2.cant_ventas DESC
 )
 GO
+
+
+-- Vista 7
+CREATE VIEW LA_NARANJA_MECANICA_V2.bi_porcentaje_cumplimiento_envios
+AS
+SELECT COUNT(DISTINCT e.nro) * 100 / total_envios.cantidad_envios 'Porcentaje de cumplimiento', t.anio año, t.mes, pro.nombre 'Provincia destino', a.id 'Codigo almacen'
+	FROM LA_NARANJA_MECANICA_V2.bi_hecho_envio e
+	JOIN LA_NARANJA_MECANICA_V2.BI_Tiempo t ON e.id_tiempo = t.id_tiempo
+	JOIN LA_NARANJA_MECANICA_V2.bi_almacen a ON a.id = e.id_almacen
+	JOIN LA_NARANJA_MECANICA_V2.bi_domicilio d ON e.id__domicilio = d.id
+	JOIN LA_NARANJA_MECANICA_V2.bi_localidad l ON l.id = d.id_localidad
+	JOIN LA_NARANJA_MECANICA_V2.bi_provincia pro ON pro.id = l.id_provincia
+	JOIN(
+		SELECT COUNT(DISTINCT e.nro) cantidad_envios, t.anio año, t.mes, pro.nombre 'Provincia destino', a.id 'Codigo almacen'
+		FROM LA_NARANJA_MECANICA_V2.bi_hecho_envio e
+		JOIN LA_NARANJA_MECANICA_V2.BI_Tiempo t ON e.id_tiempo = t.id_tiempo
+		JOIN LA_NARANJA_MECANICA_V2.bi_almacen a ON a.id = e.id_almacen
+		JOIN LA_NARANJA_MECANICA_V2.bi_domicilio d ON e.id__domicilio = d.id
+		JOIN LA_NARANJA_MECANICA_V2.bi_localidad l ON l.id = d.id_localidad
+		JOIN LA_NARANJA_MECANICA_V2.bi_provincia pro ON pro.id = l.id_provincia
+		GROUP BY t.anio, t.mes, pro.nombre, a.id
+	) total_envios ON a.id = total_envios.[Codigo almacen] 
+				   AND total_envios.[Provincia destino] = pro.nombre 
+				   AND total_envios.año = t.anio
+				   AND total_envios.mes = t.mes
+	WHERE FORMAT(e.fecha_entrega, 'HH') BETWEEN e.hora_inicio AND e.hora_fin 
+	GROUP BY t.anio, t.mes, pro.nombre, a.id, total_envios.cantidad_envios
 
 -- Vista 8
 CREATE OR ALTER VIEW LA_NARANJA_MECANICA_V2.localidades_costo_envio
