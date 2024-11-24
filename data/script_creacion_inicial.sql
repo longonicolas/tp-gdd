@@ -35,7 +35,11 @@ WHERE TABLE_SCHEMA = 'LA_NARANJA_MECANICA_V2';
 -- Ejecuta el SQL generado para eliminar las tablas
 EXEC sp_executesql @sql;
 
-DROP VIEW LA_NARANJA_MECANICA_V2.vw_PromedioTiempoPublicaciones;
+DROP VIEW LA_NARANJA_MECANICA_V2.V1_PromedioTiempoPublicaciones;
+DROP VIEW LA_NARANJA_MECANICA_V2.V2_PromedioStockInicial;
+DROP VIEW LA_NARANJA_MECANICA_V2.V3_VentaPromedioMensual;
+DROP VIEW LA_NARANJA_MECANICA_V2.V4_RendimientoDeRubros;
+
 
 /*
 -- PASO 4: Eliminar el esquema LA_NARANJA_MECANICA_V2 
@@ -824,3 +828,5 @@ SELECT DISTINCT VENTA_CODIGO,
 				ENVIO_FECHA_ENTREGA
 FROM gd_esquema.Maestra
 WHERE VENTA_CODIGO IS NOT NULL
+
+SELECT * FROM LA_NARANJA_MECANICA_V2.envio where YEAR(fecha) != YEAR(fecha_entrega) OR MONTH(fecha) != MONTH(fecha_entrega) OR DAY(fecha) != DAY(fecha_entrega) 
