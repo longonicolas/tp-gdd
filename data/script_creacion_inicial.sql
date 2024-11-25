@@ -39,6 +39,11 @@ DROP VIEW LA_NARANJA_MECANICA_V2.V1_PromedioTiempoPublicaciones;
 DROP VIEW LA_NARANJA_MECANICA_V2.V2_PromedioStockInicial;
 DROP VIEW LA_NARANJA_MECANICA_V2.V3_VentaPromedioMensual;
 DROP VIEW LA_NARANJA_MECANICA_V2.V4_RendimientoDeRubros;
+DROP VIEW LA_NARANJA_MECANICA_V2.V6_Top3LocalidadesPagosCuotas;
+DROP VIEW LA_NARANJA_MECANICA_V2.V7_PorcentajeCumplimientoEnvios;
+DROP VIEW LA_NARANJA_MECANICA_V2.V8_LocalidadesCostoEnvio;
+DROP VIEW LA_NARANJA_MECANICA_V2.V9_PorcentajeFacturacionPorConcepto;
+DROP VIEW LA_NARANJA_MECANICA_V2.V10_Facturacion_Por_Provincia
 
 
 /*
@@ -828,5 +833,3 @@ SELECT DISTINCT VENTA_CODIGO,
 				ENVIO_FECHA_ENTREGA
 FROM gd_esquema.Maestra
 WHERE VENTA_CODIGO IS NOT NULL
-
-SELECT * FROM LA_NARANJA_MECANICA_V2.envio where YEAR(fecha) != YEAR(fecha_entrega) OR MONTH(fecha) != MONTH(fecha_entrega) OR DAY(fecha) != DAY(fecha_entrega) 
