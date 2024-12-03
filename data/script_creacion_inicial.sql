@@ -52,7 +52,6 @@ DROP VIEW LA_NARANJA_MECANICA_V2.V10_Facturacion_Por_Provincia
 -- Si deseas eliminar el esquema completo, usa esta l�nea.
 DROP SCHEMA LA_NARANJA_MECANICA_V2;
 
-
 ---------------------CREAMOS ESQUEMA-------------------------
 USE GD2C2024
 GO

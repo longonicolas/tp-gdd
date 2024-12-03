@@ -4,9 +4,7 @@ CREATE TABLE LA_NARANJA_MECANICA_V2.BI_Tiempo(
 	id_tiempo decimal(18,0) IDENTITY PRIMARY KEY,
 	anio decimal(18,0),
 	cuatrimestre decimal(18,0),
-	mes decimal(18,0),
-	dia decimal(18,0),
-	fecha datetime
+	mes decimal(18,0)
 )
 
 CREATE TABLE LA_NARANJA_MECANICA_V2.BI_Ubicacion(
@@ -71,29 +69,30 @@ CREATE TABLE LA_NARANJA_MECANICA_V2.BI_Concepto (
 )
 
 --TABLAS DE HECHOS
-CREATE TABLE LA_NARANJA_MECANICA_V2.BI_Hecho_Publicaciones (
-    id_publicacion DECIMAL(18,0) PRIMARY KEY,
+CREATE TABLE LA_NARANJA_MECANICA_V2.BI_Hecho_Publicaciones(
     id_producto DECIMAL(18,0),
-	stock DECIMAL(18,0),
-    id_tiempo_inicio DECIMAL(18,0),
-	id_tiempo_fin DECIMAL(18,0)
+	id_tiempo DECIMAL(18,0),
+	stock_promedio DECIMAL(18,0),
+	tiempo_vigente_promedio DECIMAL(18,2)
     FOREIGN KEY (id_producto) REFERENCES LA_NARANJA_MECANICA_V2.BI_Producto(id_producto),
-    FOREIGN KEY (id_tiempo_inicio) REFERENCES LA_NARANJA_MECANICA_V2.BI_Tiempo(id_tiempo),
-	FOREIGN KEY (id_tiempo_fin) REFERENCES LA_NARANJA_MECANICA_V2.BI_Tiempo(id_tiempo)
+    FOREIGN KEY (id_tiempo) REFERENCES LA_NARANJA_MECANICA_V2.BI_Tiempo(id_tiempo),
+	PRIMARY KEY (id_producto, id_tiempo)
 )
 
 CREATE TABLE LA_NARANJA_MECANICA_V2.BI_Hecho_Ventas(
-	id_hecho_venta DECIMAL(18,0) PRIMARY KEY,
 	id_tiempo DECIMAL(18,0),
 	id_producto DECIMAL(18,0),
-	id_ubicacion DECIMAL(18,0),
+	id_ubicacion_almacen DECIMAL(18,0),
+	id_ubicacion_cliente DECIMAL(18,0),
 	id_rango_etario DECIMAL(18,0),
-	cantidad DECIMAL(18,0),
-	total_venta DECIMAL(18,0)
+	cantidad_total DECIMAL(18,0),
+	total_ventas DECIMAL(18,0)
 	FOREIGN KEY (id_tiempo) REFERENCES LA_NARANJA_MECANICA_V2.BI_Tiempo(id_tiempo),
 	FOREIGN KEY (id_producto) REFERENCES LA_NARANJA_MECANICA_V2.BI_Producto(id_producto),
-	FOREIGN KEY (id_ubicacion) REFERENCES LA_NARANJA_MECANICA_V2.BI_Ubicacion(id_ubicacion),
-	FOREIGN KEY (id_rango_etario) REFERENCES LA_NARANJA_MECANICA_V2.BI_RangoEtario(id_rango_etario)
+	FOREIGN KEY (id_ubicacion_almacen) REFERENCES LA_NARANJA_MECANICA_V2.BI_Ubicacion(id_ubicacion),
+	FOREIGN KEY (id_ubicacion_cliente) REFERENCES LA_NARANJA_MECANICA_V2.BI_Ubicacion(id_ubicacion),
+	FOREIGN KEY (id_rango_etario) REFERENCES LA_NARANJA_MECANICA_V2.BI_RangoEtario(id_rango_etario),
+	PRIMARY KEY (id_producto, id_tiempo, id_ubicacion_almacen, id_ubicacion_cliente, id_rango_etario)
 )
 
 CREATE TABLE LA_NARANJA_MECANICA_V2.BI_Hecho_Pagos (
@@ -164,7 +163,7 @@ END
 GO
 
 -- Evitar duplicados en BI_Tiempo al insertar desde factura
-INSERT INTO LA_NARANJA_MECANICA_V2.BI_Tiempo (anio, cuatrimestre, mes, dia, fecha)
+INSERT INTO LA_NARANJA_MECANICA_V2.BI_Tiempo (anio, cuatrimestre, mes)
 SELECT DISTINCT
     YEAR(F.fecha) AS anio,
     CASE 
@@ -172,18 +171,22 @@ SELECT DISTINCT
         WHEN MONTH(F.fecha) BETWEEN 5 AND 8 THEN 2
         ELSE 3
     END AS cuatrimestre,
-    MONTH(F.fecha) AS mes,
-    DAY(F.fecha) AS dia,
-    F.fecha AS fecha
+    MONTH(F.fecha) AS mes
 FROM LA_NARANJA_MECANICA_V2.factura AS F
 WHERE NOT EXISTS (
     SELECT 1
     FROM LA_NARANJA_MECANICA_V2.BI_Tiempo T
-    WHERE T.fecha = F.fecha
+    WHERE T.anio = YEAR(F.fecha)
+      AND T.cuatrimestre = CASE 
+                              WHEN MONTH(F.fecha) BETWEEN 1 AND 4 THEN 1
+                              WHEN MONTH(F.fecha) BETWEEN 5 AND 8 THEN 2
+                              ELSE 3
+                          END
+      AND T.mes = MONTH(F.fecha)
 );
 
 -- Evitar duplicados en BI_Tiempo al insertar desde fecha_inicio de publicación
-INSERT INTO LA_NARANJA_MECANICA_V2.BI_Tiempo (anio, cuatrimestre, mes, dia, fecha)
+INSERT INTO LA_NARANJA_MECANICA_V2.BI_Tiempo (anio, cuatrimestre, mes)
 SELECT DISTINCT
     YEAR(P.fecha_inicio) AS anio,
     CASE 
@@ -191,18 +194,21 @@ SELECT DISTINCT
         WHEN MONTH(P.fecha_inicio) BETWEEN 5 AND 8 THEN 2
         ELSE 3
     END AS cuatrimestre,
-    MONTH(P.fecha_inicio) AS mes,
-    DAY(P.fecha_inicio) AS dia,
-    P.fecha_inicio AS fecha
+    MONTH(P.fecha_inicio) AS mes
 FROM LA_NARANJA_MECANICA_V2.publicacion AS P
 WHERE NOT EXISTS (
     SELECT 1
     FROM LA_NARANJA_MECANICA_V2.BI_Tiempo T
-    WHERE T.fecha = P.fecha_inicio
+    WHERE T.anio = YEAR(P.fecha_inicio)
+      AND T.cuatrimestre = CASE 
+                              WHEN MONTH(P.fecha_inicio) BETWEEN 1 AND 4 THEN 1
+                              WHEN MONTH(P.fecha_inicio) BETWEEN 5 AND 8 THEN 2
+                              ELSE 3
+                          END
+      AND T.mes = MONTH(P.fecha_inicio)
 );
-
 -- Evitar duplicados en BI_Tiempo al insertar desde fecha_fin de publicación
-INSERT INTO LA_NARANJA_MECANICA_V2.BI_Tiempo (anio, cuatrimestre, mes, dia, fecha)
+INSERT INTO LA_NARANJA_MECANICA_V2.BI_Tiempo (anio, cuatrimestre, mes)
 SELECT DISTINCT
     YEAR(P.fecha_fin) AS anio,
     CASE 
@@ -210,17 +216,22 @@ SELECT DISTINCT
         WHEN MONTH(P.fecha_fin) BETWEEN 5 AND 8 THEN 2
         ELSE 3
     END AS cuatrimestre,
-    MONTH(P.fecha_fin) AS mes,
-    DAY(P.fecha_fin) AS dia,
-    P.fecha_fin AS fecha
+    MONTH(P.fecha_fin) AS mes
 FROM LA_NARANJA_MECANICA_V2.publicacion AS P
 WHERE NOT EXISTS (
     SELECT 1
     FROM LA_NARANJA_MECANICA_V2.BI_Tiempo T
-    WHERE T.fecha = P.fecha_fin
+    WHERE T.anio = YEAR(P.fecha_fin)
+      AND T.cuatrimestre = CASE 
+                              WHEN MONTH(P.fecha_fin) BETWEEN 1 AND 4 THEN 1
+                              WHEN MONTH(P.fecha_fin) BETWEEN 5 AND 8 THEN 2
+                              ELSE 3
+                          END
+      AND T.mes = MONTH(P.fecha_fin)
 );
 
-INSERT INTO LA_NARANJA_MECANICA_V2.BI_Tiempo (anio, cuatrimestre, mes, dia, fecha)
+-- Evitar duplicados en BI_Tiempo al insertar desde fecha de envío
+INSERT INTO LA_NARANJA_MECANICA_V2.BI_Tiempo (anio, cuatrimestre, mes)
 SELECT DISTINCT
     YEAR(E.fecha) AS anio,
     CASE 
@@ -228,14 +239,18 @@ SELECT DISTINCT
         WHEN MONTH(E.fecha) BETWEEN 5 AND 8 THEN 2
         ELSE 3
     END AS cuatrimestre,
-    MONTH(E.fecha) AS mes,
-    DAY(E.fecha) AS dia,
-    E.fecha AS fecha
+    MONTH(E.fecha) AS mes
 FROM LA_NARANJA_MECANICA_V2.envio AS E
 WHERE NOT EXISTS (
     SELECT 1
     FROM LA_NARANJA_MECANICA_V2.BI_Tiempo T
-    WHERE T.fecha = E.fecha
+    WHERE T.anio = YEAR(E.fecha)
+      AND T.cuatrimestre = CASE 
+                              WHEN MONTH(E.fecha) BETWEEN 1 AND 4 THEN 1
+                              WHEN MONTH(E.fecha) BETWEEN 5 AND 8 THEN 2
+                              ELSE 3
+                          END
+      AND T.mes = MONTH(E.fecha)
 );
 
 INSERT INTO LA_NARANJA_MECANICA_V2.BI_Ubicacion
@@ -284,33 +299,44 @@ SELECT * FROM LA_NARANJA_MECANICA_V2.concepto
 
 -- Insertar datos en la tabla de hechos BI_Publicaciones
 INSERT INTO LA_NARANJA_MECANICA_V2.BI_Hecho_Publicaciones
-SELECT DISTINCT
-    P.codigo_publicacion,
+SELECT 
     P.id_producto,
-	P.stock,
-    T.id_tiempo, -- ID de tiempo asociado a la fecha de inicio
-	T2.id_tiempo -- ID de tiempo asociado a la fecha de fin
-FROM LA_NARANJA_MECANICA_V2.publicacion AS P
-JOIN LA_NARANJA_MECANICA_V2.BI_Tiempo T ON YEAR(P.fecha_inicio) = T.anio AND MONTH(P.fecha_inicio) = T.mes AND DAY(P.fecha_inicio) = T.dia
-JOIN LA_NARANJA_MECANICA_V2.BI_Tiempo T2 ON YEAR(P.fecha_fin) = T2.anio AND MONTH(P.fecha_fin) = T2.mes AND DAY(P.fecha_fin) = T2.dia
-JOIN LA_NARANJA_MECANICA_V2.BI_Producto AS Prod ON P.id_producto = Prod.id_producto
+	T.id_tiempo,
+    AVG(P.stock) AS stock_promedio,
+    AVG(DATEDIFF(DAY, P.fecha_inicio, P.fecha_fin)) AS tiempo_vigente_promedio
+FROM 
+    LA_NARANJA_MECANICA_V2.publicacion AS P
+JOIN 
+    LA_NARANJA_MECANICA_V2.BI_Producto AS Prod ON P.id_producto = Prod.id_producto
+JOIN 
+    LA_NARANJA_MECANICA_V2.BI_Tiempo AS T 
+    ON YEAR(P.fecha_inicio) = T.anio AND MONTH(P.fecha_inicio) = T.mes
+GROUP BY 
+    P.id_producto, T.id_tiempo;
 
 INSERT INTO LA_NARANJA_MECANICA_V2.BI_Hecho_Ventas
 SELECT
-	V.nro_venta,
 	T.id_tiempo,
 	PU.id_producto,
 	A.id_domicilio,
+	D.id,
 	LA_NARANJA_MECANICA_V2.get_rango_etario(C.fecha_nacimiento),
-	DV.cantidad,
-	V.total
+	SUM(DV.cantidad),
+	SUM(V.total)
 FROM LA_NARANJA_MECANICA_V2.venta V
 JOIN LA_NARANJA_MECANICA_V2.detalle_venta DV ON V.id_detalle_venta = DV.id_detalle_venta
 JOIN LA_NARANJA_MECANICA_V2.publicacion PU ON PU.codigo_publicacion = DV.id_publicacion
-JOIN LA_NARANJA_MECANICA_V2.BI_Tiempo T ON T.anio = YEAR(V.fecha) AND T.mes = MONTH(V.fecha) AND T.dia = DAY(V.fecha)
+JOIN LA_NARANJA_MECANICA_V2.BI_Tiempo T ON YEAR(V.fecha) = T.anio AND MONTH(V.fecha) = T.mes
 JOIN LA_NARANJA_MECANICA_V2.almacen A ON A.codigo_almacen = PU.id_almacen
 JOIN LA_NARANJA_MECANICA_V2.usuario U ON U.id = V.id_usuario
 JOIN LA_NARANJA_MECANICA_V2.cliente C ON C.id = U.id_cliente
+JOIN LA_NARANJA_MECANICA_V2.domicilio D ON D.id_usuario = U.id
+GROUP BY 
+	T.id_tiempo,
+	PU.id_producto,
+	A.id_domicilio,
+	D.id,
+	LA_NARANJA_MECANICA_V2.get_rango_etario(C.fecha_nacimiento)
 
 INSERT INTO LA_NARANJA_MECANICA_V2.BI_Hecho_Pagos (
     id_hecho_pago,
@@ -379,25 +405,22 @@ JOIN LA_NARANJA_MECANICA_V2.BI_Concepto C ON C.id_concepto = DF.id_concepto
 GO
 CREATE or ALTER VIEW LA_NARANJA_MECANICA_V2.V1_PromedioTiempoPublicaciones AS
 SELECT
-    S.descripcion AS subrubro,
+    SR.descripcion AS subrubro,
     T.anio,
     T.cuatrimestre,
-    AVG(DATEDIFF(DAY, T.fecha, T2.fecha)) AS promedio_tiempo_vigente_dias -- Promedio de los tiempos vigentes en días
+    AVG(P.tiempo_vigente_promedio) AS tiempo_promedio
 FROM
-    LA_NARANJA_MECANICA_V2.BI_Hecho_Publicaciones P
+    LA_NARANJA_MECANICA_V2.BI_Hecho_Publicaciones AS P
 JOIN
-    LA_NARANJA_MECANICA_V2.BI_Producto Prod ON P.id_producto = Prod.id_producto
+    LA_NARANJA_MECANICA_V2.BI_Producto AS PR ON P.id_producto = PR.id_producto
 JOIN
-	LA_NARANJA_MECANICA_V2.BI_Subrubro S ON Prod.id_subrubro = S.id_subrubro
+    LA_NARANJA_MECANICA_V2.BI_Subrubro AS SR ON PR.id_subrubro = SR.id_subrubro
 JOIN
-    LA_NARANJA_MECANICA_V2.BI_Tiempo T ON P.id_tiempo_inicio = T.id_tiempo
-JOIN
-    LA_NARANJA_MECANICA_V2.BI_Tiempo T2 ON P.id_tiempo_fin = T2.id_tiempo
+    LA_NARANJA_MECANICA_V2.BI_Tiempo AS T ON P.id_tiempo = T.id_tiempo 
 GROUP BY
-    S.descripcion, -- Subrubro
-    T.anio,       -- Año
-    T.cuatrimestre -- Cuatrimestre
-GO
+    SR.descripcion,
+    T.anio,
+    T.cuatrimestre;
 
 -- VISTA 2:
 GO
@@ -405,7 +428,7 @@ CREATE OR ALTER VIEW LA_NARANJA_MECANICA_V2.V2_PromedioStockInicial AS
 SELECT
     M.nombre AS Marca,      
     T.anio AS AÑO,          
-    AVG(P.stock) AS PromedioStockInicial 
+    AVG(P.stock_promedio) AS PromedioStockInicial 
 FROM
     LA_NARANJA_MECANICA_V2.BI_Hecho_Publicaciones P
 JOIN
@@ -413,7 +436,7 @@ JOIN
 JOIN
     LA_NARANJA_MECANICA_V2.BI_Marca M ON Prod.id_marca = M.id_marca
 JOIN
-    LA_NARANJA_MECANICA_V2.BI_Tiempo T ON P.id_tiempo_inicio = T.id_tiempo
+    LA_NARANJA_MECANICA_V2.BI_Tiempo T ON P.id_tiempo = T.id_tiempo
 GROUP BY
     M.nombre,
     T.anio    
@@ -426,17 +449,16 @@ SELECT
     U.provincia AS Provincia,
     T.anio AS Año,
     T.mes AS Mes,
-    AVG(H.total_venta) AS VentaPromedioMensual
+    SUM(H.total_ventas)/COUNT(*) AS VentaPromedioMensual
 FROM
     LA_NARANJA_MECANICA_V2.BI_Hecho_Ventas H
 JOIN LA_NARANJA_MECANICA_V2.BI_Tiempo T ON H.id_tiempo = T.id_tiempo
-JOIN LA_NARANJA_MECANICA_V2.BI_Ubicacion U ON H.id_ubicacion = U.id_ubicacion
+JOIN LA_NARANJA_MECANICA_V2.BI_Ubicacion U ON H.id_ubicacion_almacen = U.id_ubicacion
 GROUP BY
     U.provincia, T.anio, T.mes;
 GO
 
 --VISTA 4:
-GO
 CREATE OR ALTER VIEW LA_NARANJA_MECANICA_V2.V4_RendimientoDeRubros AS
 SELECT
     anio,
@@ -452,25 +474,25 @@ FROM (
         U.localidad,
         RE.descripcion AS rango_etario,
         R.descripcion AS rubro,
-        SUM(V.total_venta) AS total_ventas,
+        SUM(HV.total_ventas) AS total_ventas,
         ROW_NUMBER() OVER (
             PARTITION BY T.anio, T.cuatrimestre, U.localidad, RE.descripcion
-            ORDER BY SUM(V.total_venta) DESC
+            ORDER BY SUM(HV.total_ventas) DESC
         ) AS fila
     FROM
-        LA_NARANJA_MECANICA_V2.BI_Hecho_Ventas V
-    JOIN LA_NARANJA_MECANICA_V2.BI_Tiempo T
-        ON V.id_tiempo = T.id_tiempo
-    JOIN LA_NARANJA_MECANICA_V2.BI_Producto P
-        ON V.id_producto = P.id_producto
-    JOIN LA_NARANJA_MECANICA_V2.BI_Subrubro SR
-        ON P.id_subrubro = SR.id_subrubro
-    JOIN LA_NARANJA_MECANICA_V2.BI_Rubro R
-        ON SR.id_rubro = R.id_rubro
-    JOIN LA_NARANJA_MECANICA_V2.BI_Ubicacion U
-        ON V.id_ubicacion = U.id_ubicacion
-    JOIN LA_NARANJA_MECANICA_V2.BI_RangoEtario RE
-        ON V.id_rango_etario = RE.id_rango_etario
+        LA_NARANJA_MECANICA_V2.BI_Hecho_Ventas HV
+    JOIN 
+        LA_NARANJA_MECANICA_V2.BI_Tiempo T ON HV.id_tiempo = T.id_tiempo
+    JOIN 
+        LA_NARANJA_MECANICA_V2.BI_Producto P ON HV.id_producto = P.id_producto
+    JOIN 
+        LA_NARANJA_MECANICA_V2.BI_Subrubro SR ON P.id_subrubro = SR.id_subrubro
+    JOIN 
+        LA_NARANJA_MECANICA_V2.BI_Rubro R ON SR.id_rubro = R.id_rubro
+    JOIN 
+        LA_NARANJA_MECANICA_V2.BI_Ubicacion U ON HV.id_ubicacion_cliente = U.id_ubicacion
+    JOIN 
+        LA_NARANJA_MECANICA_V2.BI_RangoEtario RE ON HV.id_rango_etario = RE.id_rango_etario
     GROUP BY
         T.anio, T.cuatrimestre, U.localidad, RE.descripcion, R.descripcion
 ) AS VentasPorRubro
