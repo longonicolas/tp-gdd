@@ -96,40 +96,38 @@ CREATE TABLE LA_NARANJA_MECANICA_V2.BI_Hecho_Ventas(
 )
 
 CREATE TABLE LA_NARANJA_MECANICA_V2.BI_Hecho_Pagos (
-    id_hecho_pago DECIMAL(18,0) PRIMARY KEY,
     id_tiempo DECIMAL(18,0),
     id_tipo_medio_pago DECIMAL(18,0), 
     id_ubicacion DECIMAL(18,0), 
-    cantidad_cuotas DECIMAL(18,0), 
-    importe_pago DECIMAL(18,2),
+    importe_pago_en_cuotas DECIMAL(18,2),
+	importe_pago_sin_cuotas DECIMAL(18,2),
     FOREIGN KEY (id_tiempo) REFERENCES LA_NARANJA_MECANICA_V2.BI_Tiempo (id_tiempo),
     FOREIGN KEY (id_tipo_medio_pago) REFERENCES LA_NARANJA_MECANICA_V2.BI_TipoMedioDePago (id_tipo_medio_pago),
-    FOREIGN KEY (id_ubicacion) REFERENCES LA_NARANJA_MECANICA_V2.BI_Ubicacion (id_ubicacion)
+    FOREIGN KEY (id_ubicacion) REFERENCES LA_NARANJA_MECANICA_V2.BI_Ubicacion (id_ubicacion),
+	PRIMARY KEY (id_tiempo, id_tipo_medio_pago, id_ubicacion)
 )
 
 CREATE TABLE LA_NARANJA_MECANICA_V2.BI_Hecho_Envios(
-	id_hecho_envio DECIMAL(18,0) PRIMARY KEY,
-	id_fecha_entrega DECIMAL(18,0),
-	id_fecha_programada DECIMAL(18,0),
+	id_tiempo DECIMAL(18,0),
 	id_ubicacion_almacen DECIMAL(18,0),
 	id_ubicacion_cliente DECIMAL(18,0),
-	costo DECIMAL(18,2),
-	tiempo_cumplido SMALLINT,
-	FOREIGN KEY (id_fecha_entrega) REFERENCES LA_NARANJA_MECANICA_V2.BI_Tiempo(id_tiempo),
-	FOREIGN KEY (id_fecha_programada) REFERENCES LA_NARANJA_MECANICA_V2.BI_Tiempo(id_tiempo),
+	costo_total DECIMAL(18,2),
+	porcentaje_tiempo_cumplido DECIMAL(18,2),
+	FOREIGN KEY (id_tiempo) REFERENCES LA_NARANJA_MECANICA_V2.BI_Tiempo(id_tiempo),
 	FOREIGN KEY (id_ubicacion_almacen) REFERENCES LA_NARANJA_MECANICA_V2.BI_Ubicacion(id_ubicacion),
-	FOREIGN KEY (id_ubicacion_cliente) REFERENCES LA_NARANJA_MECANICA_V2.BI_Ubicacion(id_ubicacion)
+	FOREIGN KEY (id_ubicacion_cliente) REFERENCES LA_NARANJA_MECANICA_V2.BI_Ubicacion(id_ubicacion),
+	PRIMARY KEY (id_tiempo, id_ubicacion_almacen, id_ubicacion_cliente)
 )
 
 CREATE TABLE LA_NARANJA_MECANICA_V2.BI_Hecho_Facturaciones(
-	id_hecho_facturacion DECIMAL(18,0) IDENTITY(1,1) PRIMARY KEY,
 	id_tiempo DECIMAL(18,0),
 	id_concepto DECIMAL(18,0),
 	id_ubicacion DECIMAL(18,0),
-	monto DECIMAL(18,2),
+	monto_total DECIMAL(18,2),
 	FOREIGN KEY (id_tiempo) REFERENCES LA_NARANJA_MECANICA_V2.BI_Tiempo(id_tiempo),
 	FOREIGN KEY (id_concepto) REFERENCES LA_NARANJA_MECANICA_V2.BI_Concepto(id_concepto),
-	FOREIGN KEY (id_ubicacion) REFERENCES LA_NARANJA_MECANICA_V2.BI_Ubicacion(id_ubicacion)
+	FOREIGN KEY (id_ubicacion) REFERENCES LA_NARANJA_MECANICA_V2.BI_Ubicacion(id_ubicacion),
+	PRIMARY KEY (id_tiempo, id_concepto, id_ubicacion)
 )
 
 ---- MIGRADO DE DATOS DEL MODELO TRANSACCIONAL -------
@@ -338,66 +336,51 @@ GROUP BY
 	D.id,
 	LA_NARANJA_MECANICA_V2.get_rango_etario(C.fecha_nacimiento)
 
-INSERT INTO LA_NARANJA_MECANICA_V2.BI_Hecho_Pagos (
-    id_hecho_pago,
-    id_tiempo,
-    id_tipo_medio_pago,
-    id_ubicacion,
-    cantidad_cuotas,
-    importe_pago
-)
+INSERT INTO LA_NARANJA_MECANICA_V2.BI_Hecho_Pagos
 SELECT
-	P.nro_pago,
 	T.id_tiempo,
 	TMP.id_tipo_medio_pago,
-	D.id,
-	P.cuotas,
-	P.importe
+	E.id_domicilio,
+	SUM(CASE WHEN P.cuotas > 1 THEN P.importe ELSE 0 END),
+	SUM(CASE WHEN P.cuotas = 1 THEN P.importe ELSE 0 END)
 FROM LA_NARANJA_MECANICA_V2.pago P
-JOIN LA_NARANJA_MECANICA_V2.BI_Tiempo T ON T.anio = YEAR(P.fecha) AND T.mes = MONTH(P.fecha) AND T.dia = DAY(P.fecha)
+JOIN LA_NARANJA_MECANICA_V2.BI_Tiempo T ON T.anio = YEAR(P.fecha) AND T.mes = MONTH(P.fecha)
 JOIN LA_NARANJA_MECANICA_V2.medio_pago MP ON P.id_medio_pago = MP.id_medio_pago
 JOIN LA_NARANJA_MECANICA_V2.tipo_medio_pago TMP ON MP.id_tipo_medio_pago = TMP.id_tipo_medio_pago
 JOIN LA_NARANJA_MECANICA_V2.venta V ON P.nro_venta = V.nro_venta
 JOIN LA_NARANJA_MECANICA_V2.envio E ON E.nro_venta = V.nro_venta
-JOIN LA_NARANJA_MECANICA_V2.domicilio D ON D.id = E.id_domicilio
-WHERE
-    P.cuotas > 1 AND D.id_usuario is not null
+GROUP BY
+	T.id_tiempo, TMP.id_tipo_medio_pago, E.id_domicilio
 
-INSERT INTO LA_NARANJA_MECANICA_V2.BI_Hecho_Envios(id_hecho_envio, id_fecha_entrega, id_fecha_programada, id_ubicacion_almacen, id_ubicacion_cliente, costo, tiempo_cumplido)
+INSERT INTO LA_NARANJA_MECANICA_V2.BI_Hecho_Envios
 SELECT
-    E.nro_envio,
     T.id_tiempo,
-	T1.id_tiempo,
     A.id_domicilio,
 	E.id_domicilio,
-	E.costo,
-	CASE 
-        WHEN DATEPART(HOUR, E.fecha_entrega) between E.hora_inicio and E.hora_fin THEN 1 ELSE 0 
-    END AS tiempo_cumplido
+	SUM(E.costo),
+	CAST(SUM(CASE WHEN DATEPART(HOUR, E.fecha_entrega) BETWEEN E.hora_inicio AND E.hora_fin THEN 1 ELSE 0 END) AS DECIMAL(18,2)) /
+    CAST(COUNT(*) AS DECIMAL(18,2)) * 100 AS porcentaje_tiempo_cumplido
 FROM LA_NARANJA_MECANICA_V2.envio E
-JOIN LA_NARANJA_MECANICA_V2.BI_Tiempo T ON T.anio = YEAR(E.fecha_entrega)
-                  AND T.mes = MONTH(E.fecha_entrega)
-                  AND T.dia = DAY(E.fecha_entrega)
-JOIN LA_NARANJA_MECANICA_V2.BI_Tiempo T1 ON T1.anio = YEAR(E.fecha)
-                  AND T1.mes = MONTH(E.fecha)
-                  AND T1.dia = DAY(E.fecha)
+JOIN LA_NARANJA_MECANICA_V2.BI_Tiempo T ON T.anio = YEAR(E.fecha) AND T.mes = MONTH(E.fecha) --TAMBIEN ESTA LA FECHA ENTREGA
 JOIN LA_NARANJA_MECANICA_V2.venta V ON V.nro_venta = E.nro_venta
 JOIN LA_NARANJA_MECANICA_V2.detalle_venta DV ON DV.id_detalle_venta = V.id_detalle_venta
 JOIN LA_NARANJA_MECANICA_V2.publicacion P ON P.codigo_publicacion = DV.id_publicacion
 JOIN LA_NARANJA_MECANICA_V2.almacen A ON A.codigo_almacen = P.id_almacen
+GROUP BY T.id_tiempo, A.id_domicilio, E.id_domicilio
 
-INSERT INTO LA_NARANJA_MECANICA_V2.BI_Hecho_Facturaciones (id_tiempo, id_concepto, id_ubicacion, monto)
+INSERT INTO LA_NARANJA_MECANICA_V2.BI_Hecho_Facturaciones
 SELECT     
     T.id_tiempo AS id_tiempo,            
     C.id_concepto AS id_concepto,  
 	D.id,
-    DF.detalle_subtotal                      
+    SUM(DF.detalle_subtotal)                 
 FROM LA_NARANJA_MECANICA_V2.detalle_factura DF
 JOIN LA_NARANJA_MECANICA_V2.factura F ON F.nro_factura = DF.nro_factura
 JOIN LA_NARANJA_MECANICA_V2.usuario U ON F.id_usuario = U.id 
 JOIN LA_NARANJA_MECANICA_V2.domicilio D ON D.id_usuario = U.id
-JOIN LA_NARANJA_MECANICA_V2.BI_Tiempo T ON T.anio = YEAR(F.fecha) AND T.mes = MONTH(F.fecha) AND T.dia = DAY(F.fecha)
+JOIN LA_NARANJA_MECANICA_V2.BI_Tiempo T ON T.anio = YEAR(F.fecha) AND T.mes = MONTH(F.fecha)
 JOIN LA_NARANJA_MECANICA_V2.BI_Concepto C ON C.id_concepto = DF.id_concepto
+GROUP BY T.id_tiempo, C.id_concepto, D.id
 
 --VISTAS
 
@@ -449,7 +432,7 @@ SELECT
     U.provincia AS Provincia,
     T.anio AS Año,
     T.mes AS Mes,
-    SUM(H.total_ventas)/COUNT(*) AS VentaPromedioMensual
+    AVG(H.total_ventas) AS VentaPromedioMensual
 FROM
     LA_NARANJA_MECANICA_V2.BI_Hecho_Ventas H
 JOIN LA_NARANJA_MECANICA_V2.BI_Tiempo T ON H.id_tiempo = T.id_tiempo
@@ -503,25 +486,25 @@ GO
 --NO REALIZADA DADO QUE LA FECHA NO TIENE EL HORARIO DE LA MISMA
 
 --VISTA 6
-CREATE OR ALTER VIEW LA_NARANJA_MECANICA_V2.V6_Top3LocalidadesPagosCuotas AS
-SELECT 
+CREATE OR ALTER VIEW LA_NARANJA_MECANICA_V2.V6_PagosEnCuotas AS
+SELECT
     anio,
     mes,
-    medio_pago,
+    tipo_medio_pago,
     localidad,
-    total_importe
+    importe_total_pago_en_cuotas
 FROM 
-   (
-    SELECT 
+    (
+    SELECT
         T.anio,
         T.mes,
-        TMP.nombre AS medio_pago,
+        TMP.nombre AS tipo_medio_pago,
         U.localidad,
-        SUM(HP.importe_pago) AS total_importe,
+        SUM(HP.importe_pago_en_cuotas) AS importe_total_pago_en_cuotas,
         ROW_NUMBER() OVER (
-            PARTITION BY T.anio, T.mes, TMP.nombre 
-            ORDER BY SUM(HP.importe_pago) DESC
-        ) AS ranking
+            PARTITION BY T.anio, T.mes, TMP.nombre
+            ORDER BY SUM(HP.importe_pago_en_cuotas) DESC
+        ) AS fila
     FROM 
         LA_NARANJA_MECANICA_V2.BI_Hecho_Pagos HP
     JOIN 
@@ -530,14 +513,11 @@ FROM
         LA_NARANJA_MECANICA_V2.BI_TipoMedioDePago TMP ON HP.id_tipo_medio_pago = TMP.id_tipo_medio_pago
     JOIN 
         LA_NARANJA_MECANICA_V2.BI_Ubicacion U ON HP.id_ubicacion = U.id_ubicacion
-    WHERE 
-        HP.cantidad_cuotas > 1
-    GROUP BY 
+	GROUP BY 
         T.anio, T.mes, TMP.nombre, U.localidad
-	) as ranking
+) as PagosConLocalidad
 WHERE 
-    ranking <= 3
-GO
+    fila <= 3;
 
 --VISTA 7
 GO
@@ -545,14 +525,13 @@ CREATE OR ALTER VIEW LA_NARANJA_MECANICA_V2.V7_PorcentajeCumplimientoEnvios AS
 SELECT
     U.provincia AS Provincia,             
     T.anio AS Año,                        
-    T.mes AS Mes,                         
-    COUNT(CASE WHEN H.tiempo_cumplido = 1 THEN 1 END) * 100.0 / COUNT(*) AS PorcentajeCumplimiento
+    T.mes AS Mes,                        
+    AVG(H.porcentaje_tiempo_cumplido) AS PorcentajeTiempoCumplido
 FROM
     LA_NARANJA_MECANICA_V2.BI_Hecho_Envios H
 JOIN LA_NARANJA_MECANICA_V2.BI_Ubicacion U ON H.id_ubicacion_almacen = U.id_ubicacion
-JOIN LA_NARANJA_MECANICA_V2.BI_Tiempo T ON H.id_fecha_entrega = T.id_tiempo
-GROUP BY
-    U.provincia, T.anio, T.mes;
+JOIN LA_NARANJA_MECANICA_V2.BI_Tiempo T ON H.id_tiempo = T.id_tiempo
+GROUP BY U.provincia, T.anio, T.mes
 GO
 
 --VISTA 8
@@ -563,8 +542,8 @@ SELECT
 FROM (
     SELECT
         U.localidad AS Localidad,             
-        SUM(H.costo) AS TotalCostoEnvio,
-        ROW_NUMBER() OVER (ORDER BY SUM(H.costo) DESC) AS Rnk
+        SUM(H.costo_total) AS TotalCostoEnvio,
+        ROW_NUMBER() OVER (ORDER BY SUM(H.costo_total) DESC) AS Rnk
     FROM
         LA_NARANJA_MECANICA_V2.BI_Hecho_Envios H
     JOIN LA_NARANJA_MECANICA_V2.BI_Ubicacion U ON H.id_ubicacion_cliente = U.id_ubicacion
@@ -579,15 +558,16 @@ CREATE OR ALTER VIEW LA_NARANJA_MECANICA_V2.V9_PorcentajeFacturacionPorConcepto 
 SELECT
     T.anio,
     T.mes,
-    C.nombre,
-    (SUM(HF.monto) * 100.0 / (SELECT SUM(H1.monto) FROM LA_NARANJA_MECANICA_V2.BI_Hecho_Facturaciones H1 where H1.id_concepto = HF.id_concepto))
-		AS PorcentajeFacturacion
+    C.nombre AS nombre_concepto,
+    CAST(SUM(HF.monto_total) * 100.0 / SUM(SUM(HF.monto_total)) OVER (PARTITION BY T.anio, T.mes) AS DECIMAL(18,2)) AS porcentaje_concepto
 FROM 
-	LA_NARANJA_MECANICA_V2.BI_Hecho_Facturaciones HF
-JOIN LA_NARANJA_MECANICA_V2.BI_Tiempo T ON HF.id_tiempo = T.id_tiempo
-JOIN LA_NARANJA_MECANICA_V2.BI_Concepto C ON HF.id_concepto = C.id_concepto
-Group BY
-	T.anio, T.mes, C.nombre, HF.id_concepto
+    LA_NARANJA_MECANICA_V2.BI_Hecho_Facturaciones HF
+JOIN 
+    LA_NARANJA_MECANICA_V2.BI_Tiempo T ON HF.id_tiempo = T.id_tiempo
+JOIN 
+    LA_NARANJA_MECANICA_V2.BI_Concepto C ON HF.id_concepto = C.id_concepto
+GROUP BY
+    T.anio, T.mes, C.nombre;
 GO
 
 --VISTA 10
@@ -596,7 +576,7 @@ SELECT
 	T.anio,
 	T.cuatrimestre,
 	U.provincia,
-	SUM(HF.monto) AS MontoFacturado
+	SUM(HF.monto_total) AS MontoFacturado
 FROM
 	LA_NARANJA_MECANICA_V2.BI_Hecho_Facturaciones HF
 JOIN LA_NARANJA_MECANICA_V2.BI_Tiempo T ON HF.id_tiempo = T.id_tiempo
@@ -604,3 +584,4 @@ JOIN LA_NARANJA_MECANICA_V2.BI_Ubicacion U ON HF.id_ubicacion = U.id_ubicacion
 GROUP BY 
 	T.anio, T.cuatrimestre, U.provincia
 GO
+
